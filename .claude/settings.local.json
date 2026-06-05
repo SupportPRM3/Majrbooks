@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command npm -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH -split \";\")",
+      "PowerShell($nodePath = Get-ChildItem \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; if \\($nodePath\\) { $nodePath.FullName } else { \"not found in Program Files\" }; $nodePath2 = Get-ChildItem \"C:\\\\Program Files \\(x86\\)\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; if \\($nodePath2\\) { $nodePath2.FullName } else { \"not found in Program Files \\(x86\\)\" })",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\work-pc\\\\Desktop\\\\Majr books\"; & \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\" install)",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
+    ]
+  }
+}

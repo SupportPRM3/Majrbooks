@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 215 73% 15%;
+    --foreground: 0 0% 100%;
+
+    --card: 215 60% 20%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 215 60% 20%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 158 100% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 50% 25%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 215 40% 25%;
+    --muted-foreground: 210 15% 70%;
+
+    --accent: 158 100% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 158 100% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 30% 30%;
+    --input: 215 40% 20%;
+    --ring: 158 100% 39%;
+
+    --radius: 0.75rem;
+
+    --chart-1: 158 100% 39%;
+    --chart-2: 186 85% 50%;
+    --chart-3: 0 72% 51%;
+    --chart-4: 210 100% 50%;
+    --chart-5: 280 70% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(215 73% 15%), hsl(215 60% 20%));
+    --gradient-success: linear-gradient(135deg, hsl(158 100% 39%), hsl(160 100% 45%));
+    --gradient-card: linear-gradient(180deg, hsl(215 60% 20%), hsl(215 55% 23%));
+    
+    --shadow-soft: 0 4px 20px -2px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 215 73% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 158 100% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 60% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 40% 25%;
+    --sidebar-ring: 158 100% 39%;
+  }
+
+  .dark {
+    --background: 214 85% 15%;
+    --foreground: 0 0% 100%;
+
+    --card: 214 70% 20%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 214 70% 20%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 158 64% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 214 60% 25%;
+    --muted-foreground: 210 20% 75%;
+
+    --accent: 186 85% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 158 64% 52%;
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 60% 28%;
+    --input: 214 60% 25%;
+    --ring: 158 64% 52%;
+
+    --chart-1: 186 85% 50%;
+    --chart-2: 158 64% 52%;
+    --chart-3: 0 72% 55%;
+    --chart-4: 210 100% 50%;
+    --chart-5: 280 70% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(214 85% 15%), hsl(214 85% 20%));
+    --gradient-success: linear-gradient(135deg, hsl(158 64% 52%), hsl(160 76% 50%));
+    --gradient-card: linear-gradient(180deg, hsl(214 70% 20%), hsl(214 70% 23%));
+    
+    --shadow-soft: 0 4px 20px -2px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
+
+    --sidebar-background: 214 85% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 158 64% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 70% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 214 60% 25%;
+    --sidebar-ring: 158 64% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+}
