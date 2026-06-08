@@ -86,7 +86,7 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const ADMIN_EMAILS = ["support@majrtaxsoftware.com", "asimmons@prm3tax.com", "support@prm3tax.com"];
+  const ADMIN_EMAILS = ["support@prm3tax.com"];
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
