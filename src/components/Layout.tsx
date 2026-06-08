@@ -778,13 +778,13 @@ const Layout = ({ children }: LayoutProps) => {
                     )}
                     <div className="hidden md:flex flex-col items-start">
                       <span className="text-sm font-medium">
-                        {profile?.full_name || "User"}
+                        {isAdmin ? "Majr Books" : (profile?.full_name || user?.email?.split("@")[0] || "User")}
                       </span>
                       <span className={cn(
                         "text-xs font-medium px-1.5 py-0.5 rounded",
-                        isAdmin ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+                        isAdmin ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"
                       )}>
-                        {isAdmin ? "Admin" : "User"}
+                        {isAdmin ? "ADMIN" : "User"}
                       </span>
                     </div>
                   </Button>
