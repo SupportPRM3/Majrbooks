@@ -395,9 +395,10 @@ const Layout = ({ children }: LayoutProps) => {
     ...(isAdmin ? [{ path: "/admin", label: "Admin Dashboard", icon: Shield }] : []),
   ];
 
-  const practiceItems = isClient 
-    ? clientPortalItems 
-    : fullPracticeItems.filter(item => item.isExternal || canAccessPath(item.path));
+  // Admins get ALL items - bypass subscription check
+  const practiceItems = isClient
+    ? clientPortalItems
+    : fullPracticeItems.filter(item => item.isExternal || isAdmin || canAccessPath(item.path));
 
   const billingSubmenuItems = [
     { label: "Client subscriptions", path: "/billing/client-subscriptions" },
@@ -434,10 +435,11 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 bg-card border-r border-border/50 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0",
+        "fixed inset-y-0 left-0 z-50 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0",
+        "border-r border-white/10 text-white",
         sidebarCollapsed ? "w-16" : "w-64",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      )} style={{ backgroundColor: "hsl(215, 73%, 12%)" }}>
         <div className="flex flex-col h-full">
           {/* Logo & Collapse Toggle */}
           <div className="py-4 px-2 border-b border-border/50 bg-sidebar-background flex items-center justify-between">
@@ -633,27 +635,6 @@ const Layout = ({ children }: LayoutProps) => {
               </nav>
             </div>
 
-            {/* Bookmarks Section - hidden when collapsed */}
-            {!sidebarCollapsed && (
-              <div className="px-4 py-2 mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase">Bookmarks</h3>
-                </div>
-                <nav className="space-y-1">
-                  {bookmarkItems.map((item, index) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link key={`bookmark-${index}`} to={item.path}>
-                        <div className="flex items-center space-x-3 px-3 py-2 text-sm rounded-md hover:bg-secondary/50 transition-colors">
-                          <Icon className="h-4 w-4" />
-                          <span>{item.label}</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-            )}
 
             {/* Your Books Section - hidden when collapsed or for client users */}
             {!sidebarCollapsed && !isClient && (
