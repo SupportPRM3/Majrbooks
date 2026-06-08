@@ -409,12 +409,25 @@ const Layout = ({ children }: LayoutProps) => {
   ];
 
   const bookmarkItems = [
-    { path: "/bank-transactions", label: "Bank transactions", icon: Receipt },
-    { path: "/bank-transactions", label: "Reconcile", icon: FileText },
-    { path: "/accounting", label: "Accounting", icon: Calculator },
-    { path: "/payroll-setup", label: "Payroll", icon: UsersRound },
-    { path: "/bank-transactions", label: "Reports", icon: BarChart3 },
-    { path: "/dashboard", label: "Clients", icon: Users },
+    { path: "/dashboard", label: "Client overview", icon: Users },
+    { path: "/reports", label: "Dashboards", icon: LayoutDashboard, hasSubmenu: true },
+    { path: "/transactions", label: "Tasks", icon: Check },
+    { path: "/transactions", label: "Transactions", icon: CreditCard, hasSubmenu: true },
+    { path: "/invoices", label: "Sales", icon: DollarSign, hasSubmenu: true },
+    { path: "/expenses", label: "Expenses", icon: Receipt, hasSubmenu: true },
+    { path: "/reports", label: "Reports", icon: BarChart3, hasSubmenu: true },
+    { path: "/payroll-setup", label: "Payroll", icon: UsersRound, hasSubmenu: true },
+    { path: "/time-tracking-dashboard", label: "Time Dashboard", icon: Clock },
+    { path: "/time-tracking-analytics", label: "Time Analytics", icon: BarChartIcon },
+    { path: "/billable-forecast", label: "Billable Forecast", icon: TrendingUp },
+    { path: "/pto-management", label: "PTO", icon: Calendar },
+    { path: "/timesheets", label: "Time", icon: Clock, hasSubmenu: true },
+    { path: "/projects", label: "Projects", icon: Briefcase },
+    { path: "/financial-planning", label: "Financial planning", icon: TrendingUp, hasSubmenu: true },
+    { path: "/workflow-automation", label: "Workflow automation", icon: RefreshCw },
+    { path: "/tax-returns", label: "Taxes", icon: FileText, hasSubmenu: true },
+    { path: "/bank-transactions", label: "Lending & banking", icon: Wallet, hasSubmenu: true },
+    { path: "/invoices", label: "Commerce", icon: HardDrive, hasSubmenu: true },
   ];
 
   return (
