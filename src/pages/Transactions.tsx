@@ -96,8 +96,10 @@ const Transactions = () => {
     if (!user) throw new Error("Not authenticated");
 
     const parseAmount = (val: unknown): number => {
-      const n = parseFloat(String(val ?? "0").replace(/[^0-9.-]/g, ""));
-      return isNaN(n) ? 0 : n;
+      if (val === null || val === undefined || val === "") return 0;
+      const cleaned = String(val).replace(/[^0-9.-]/g, "");
+      const n = parseFloat(cleaned);
+      return isNaN(n) ? 0 : Math.abs(n);
     };
 
     const parseDate = (val: unknown): string => {
@@ -117,18 +119,40 @@ const Transactions = () => {
         return null;
       };
 
+      // Try to get amount from multiple possible column names
+      const rawAmount = get(["amount", "total", "sum", "value", "debit", "credit", "charge", "payment"]);
+      const amount = parseAmount(rawAmount);
+
+      // Try to detect type from column or amount sign
+      const typeVal = String(get(["type", "transaction type", "txn type"]) ?? "");
+      const type = typeVal.toLowerCase().includes("income") || typeVal.toLowerCase().includes("deposit") || typeVal.toLowerCase().includes("credit")
+        ? "income" : "expense";
+
       return {
         user_id: user.id,
-        type: String(get(["type"]) ?? "expense").toLowerCase().includes("income") ? "income" : "expense",
-        amount: parseAmount(get(["amount", "total", "sum", "value"])),
-        description: String(get(["description", "memo", "note", "details", "narration"]) ?? "Imported transaction"),
-        date: parseDate(get(["date", "transaction date", "txn date", "posting date"])),
+        type,
+        amount,
+        description: String(get(["description", "memo", "note", "details", "narration", "payee", "merchant", "name"]) ?? "Imported transaction"),
+        date: parseDate(get(["date", "transaction date", "txn date", "posting date", "trans date"])),
       };
-    });
+    })
+    // ✅ Skip rows with zero or invalid amounts — prevents database constraint errors
+    .filter(r => r.amount > 0);
 
-    const { error } = await supabase.from("transactions").insert(records);
-    if (error) throw new Error(error.message);
+    if (records.length === 0) {
+      throw new Error("No valid transactions found. Make sure your Excel file has columns for date, description, and amount with numeric values greater than 0.");
+    }
+
+    // Import in batches of 100 to avoid timeouts
+    const batchSize = 100;
+    for (let i = 0; i < records.length; i += batchSize) {
+      const batch = records.slice(i, i + batchSize);
+      const { error } = await supabase.from("transactions").insert(batch);
+      if (error) throw new Error(`Import failed at row ${i + 1}: ${error.message}`);
+    }
+
     await fetchData();
+    return records.length;
   };
 
   const handleAICategorize = async () => {
