@@ -330,6 +330,27 @@ const ClientPortal = () => {
 
           {/* Quick Actions & Support */}
           <div className="space-y-6">
+            {/* AI Assessment CTA */}
+            <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-primary/8 to-primary/5">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
+                    <Sparkles className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-base">AI Bookkeeping Assessment</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Get your personalized bookkeeping health score and an AI-powered action plan in 3 minutes.
+                    </p>
+                    <Button className="mt-3 w-full" onClick={() => navigate("/client-ai")}>
+                      Start Free Assessment
+                      <ArrowRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Quick Actions */}
             <Card>
               <CardHeader>
@@ -339,39 +360,37 @@ const ClientPortal = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
-                  onClick={() => navigate("/invoices")}
+                  onClick={() => navigate("/client-invoices")}
                 >
                   <FileText className="h-4 w-4" />
                   View & Pay Invoices
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   onClick={() => navigate("/bank-transactions")}
                 >
                   <Building2 className="h-4 w-4" />
                   Connect Bank Account
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
-                  disabled
+                  onClick={() => navigate("/client-ai")}
                 >
-                  <Upload className="h-4 w-4" />
-                  Upload Documents
-                  <Badge variant="secondary" className="ml-auto text-xs">Coming Soon</Badge>
+                  <Receipt className="h-4 w-4" />
+                  Bookkeeping AI Chat
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
-                  disabled
+                  onClick={() => setShowWelcomeModal(true)}
                 >
                   <Folder className="h-4 w-4" />
-                  View My Documents
-                  <Badge variant="secondary" className="ml-auto text-xs">Coming Soon</Badge>
+                  Getting Started Guide
                 </Button>
               </CardContent>
             </Card>
@@ -385,26 +404,26 @@ const ClientPortal = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   onClick={() => setShowWelcomeModal(true)}
                 >
                   <HelpCircle className="h-4 w-4" />
                   Getting Started Guide
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   asChild
                 >
-                  <a href="mailto:support@majrtaxsoftware.com">
+                  <a href="mailto:support@prm3tax.com">
                     <Mail className="h-4 w-4" />
                     Email Support
                   </a>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   asChild
                 >
