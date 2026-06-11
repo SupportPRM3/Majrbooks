@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, Check, X, Link2, AlertCircle, Upload, Trash2, FileText, Loader2 } from "lucide-react";
+import { ImportTransactionsDialog } from "@/components/bank-transactions/ImportTransactionsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parse } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -66,8 +67,7 @@ const BankReconciliation = () => {
   const [matchPairs, setMatchPairs] = useState<MatchPair[]>([]);
   const [selectedBankTxns, setSelectedBankTxns] = useState<Set<string>>(new Set());
   const [selectedLedgerTxns, setSelectedLedgerTxns] = useState<Set<string>>(new Set());
-  const [isAnalyzingPdf, setIsAnalyzingPdf] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -380,102 +380,6 @@ const BankReconciliation = () => {
   });
 
   // PDF Analysis mutation
-  const analyzePdfMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      setIsAnalyzingPdf(true);
-      setAnalysisProgress(10);
-
-      // Upload PDF to temporary storage
-      const fileName = `${user.id}/bank-statements/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-      setAnalysisProgress(30);
-
-      // Get signed URL
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from('receipts')
-        .createSignedUrl(fileName, 3600);
-
-      if (signedUrlError) throw signedUrlError;
-      setAnalysisProgress(50);
-
-      // Call the AI analysis function
-      const { data, error } = await supabase.functions.invoke('analyze-bank-statement', {
-        body: { 
-          fileUrl: signedUrlData.signedUrl,
-          accountId: selectedAccount
-        }
-      });
-
-      setAnalysisProgress(90);
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Analysis failed");
-
-      setAnalysisProgress(100);
-      return data.data;
-    },
-    onSuccess: (data) => {
-      toast({ 
-        title: "PDF Analysis Complete", 
-        description: `Imported ${data.transactions_count} transactions from bank statement` 
-      });
-      queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      setIsAnalyzingPdf(false);
-      setAnalysisProgress(0);
-    },
-    onError: (error) => {
-      toast({
-        title: "PDF Analysis Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      setIsAnalyzingPdf(false);
-      setAnalysisProgress(0);
-    },
-  });
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-    const isCsv = file.name.toLowerCase().endsWith('.csv');
-
-    if (!isPdf && !isCsv) {
-      toast({
-        title: "Invalid File",
-        description: "Please upload a CSV or PDF file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedAccount) {
-      toast({
-        title: "No Account Selected",
-        description: "Please select an account first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (isPdf) {
-      analyzePdfMutation.mutate(file);
-    } else {
-      importCSVMutation.mutate(file);
-    }
-  };
-
   const handleAddPair = () => {
     if (selectedBankTxns.size === 0 || selectedLedgerTxns.size === 0) {
       toast({
@@ -575,6 +479,14 @@ const BankReconciliation = () => {
 
   return (
     <Layout>
+      <ImportTransactionsDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        accountId={selectedAccount || undefined}
+        onSuccess={(count) => {
+          queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
+        }}
+      />
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>
@@ -607,46 +519,19 @@ const BankReconciliation = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="csv-upload">Import Bank Statement</Label>
-                <div className="flex gap-2">
-                  <Input
-                    ref={fileInputRef}
-                    id="csv-upload"
-                    type="file"
-                    accept=".csv,.pdf"
-                    onChange={handleFileUpload}
-                    disabled={!selectedAccount || importCSVMutation.isPending || isAnalyzingPdf}
-                  />
+                <Label>Import Bank Statement</Label>
+                <div className="mt-1">
                   <Button
-                    variant="outline"
-                    disabled={!selectedAccount || isAnalyzingPdf}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setShowImportDialog(true)}
+                    className="gap-2"
                   >
-                    {isAnalyzingPdf ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
+                    <Upload className="h-4 w-4" />
+                    Import Transactions (CSV or PDF)
                   </Button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload a CSV or PDF bank statement. Transactions are extracted automatically.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload CSV or PDF bank statements. AI will automatically extract transactions from PDFs.
-                </p>
-                {isAnalyzingPdf && (
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary animate-pulse" />
-                      <span className="text-sm font-medium">AI is analyzing your bank statement...</span>
-                    </div>
-                    <Progress value={analysisProgress} className="h-2" />
-                    <p className="text-xs text-muted-foreground">
-                      {analysisProgress < 30 && "Uploading document..."}
-                      {analysisProgress >= 30 && analysisProgress < 50 && "Preparing for analysis..."}
-                      {analysisProgress >= 50 && analysisProgress < 90 && "🔍 AI extracting transactions..."}
-                      {analysisProgress >= 90 && "Saving transactions..."}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>

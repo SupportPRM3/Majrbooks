@@ -77,6 +77,7 @@ import { AddTransactionDialog } from "@/components/bank-transactions/AddTransact
 import { DeleteTransactionDialog } from "@/components/bank-transactions/DeleteTransactionDialog";
 import { TransactionSettingsDialog } from "@/components/bank-transactions/TransactionSettingsDialog";
 import { ConnectAppDialog, appConfigs } from "@/components/bank-transactions/ConnectAppDialog";
+import { ImportTransactionsDialog } from "@/components/bank-transactions/ImportTransactionsDialog";
 
 interface Transaction {
   id: string;
@@ -237,6 +238,9 @@ const BankTransactions = () => {
 
   // Transaction settings dialog state
   const [showTransactionSettings, setShowTransactionSettings] = useState(false);
+
+  // Import transactions dialog state
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const handleConnectApp = (appId: string) => {
     setSelectedAppToConnect(appId);
@@ -990,6 +994,13 @@ const BankTransactions = () => {
     <Layout>
       <BankLinkingFlow open={showBankLinking} onOpenChange={setShowBankLinking} onSuccess={handleBankLinkingSuccess} />
       
+      {/* Import Transactions Dialog */}
+      <ImportTransactionsDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onSuccess={() => fetchTransactions()}
+      />
+
       {/* Add/Edit Transaction Dialog */}
       <AddTransactionDialog
         open={showAddTransaction}
@@ -1453,8 +1464,15 @@ const BankTransactions = () => {
               </Select>
 
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => setShowImportDialog(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Transactions
+                </Button>
+                <Button
+                  variant="outline"
                   className="border-green-600 text-green-600 hover:bg-green-50"
                   onClick={() => navigate("/bank-reconciliation")}
                 >
