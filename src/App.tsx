@@ -92,6 +92,7 @@ import NotFound from "./pages/NotFound";
 import AcceptClientInvite from "./pages/AcceptClientInvite";
 import ClientSettings from "./pages/ClientSettings";
 import ClientBookkeepingAI from "./pages/ClientBookkeepingAI";
+import ClientOnboarding from "./pages/ClientOnboarding";
 import ScheduleC from "./pages/ScheduleC";
 
 const queryClient = new QueryClient();
@@ -139,6 +140,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/client-settings" element={<ClientSettings />} />
             <Route path="/client-ai" element={<ClientBookkeepingAI />} />
+            <Route path="/client-onboarding" element={<ClientOnboarding />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/financial-planning" element={<FinancialPlanning />} />
             <Route path="/workflow-automation" element={<WorkflowAutomation />} />

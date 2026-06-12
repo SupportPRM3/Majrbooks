@@ -54,12 +54,18 @@ const ClientPortal = () => {
   });
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
 
-  // Check if this is the user's first visit
+  // Check if this is the user's first visit — redirect to onboarding if not done
   useEffect(() => {
     if (user) {
+      const onboardingDone = localStorage.getItem(`majrbooks_onboarding_done_${user.id}`);
+      if (!onboardingDone) {
+        // New client — send to onboarding
+        navigate("/client-onboarding");
+        return;
+      }
+
       const welcomeSeenKey = `majrbooks_welcome_seen_${user.id}`;
       const hasSeenWelcome = localStorage.getItem(welcomeSeenKey);
-      
       if (!hasSeenWelcome) {
         setShowWelcomeModal(true);
         localStorage.setItem(welcomeSeenKey, "true");

@@ -239,9 +239,8 @@ const AcceptClientInvite = () => {
       if (signInError) {
         navigate("/auth");
       } else {
-        // Redirect to plan selection - client will go through Stripe checkout with 14-day trial
-        // This ensures they have a card on file and can cancel before being charged
-        navigate("/auth?showPlanSelection=true");
+        // Redirect to onboarding wizard for new clients
+        navigate("/client-onboarding");
       }
     } catch (error: any) {
       console.error("Signup error:", error);
