@@ -56,6 +56,7 @@ import {
   PanelLeft,
   HardDrive,
   Bot,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import majrLogo from "@/assets/logo-majr-books.jpg";
@@ -378,6 +379,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/client-portal", label: "My Portal", icon: LayoutDashboard },
     { path: "/client-invoices", label: "My Invoices", icon: Receipt },
     { path: "/client-ai", label: "AI Assistant", icon: Bot },
+    { path: "/client-support", label: "Support", icon: MessageCircle },
     { path: "/client-settings", label: "Settings", icon: Settings },
   ];
 
