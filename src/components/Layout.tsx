@@ -395,6 +395,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/transactions", label: "Work", icon: Briefcase },
     { path: "/team", label: "Team", icon: UserCheck },
     { path: "/user-permissions", label: "User Permissions", icon: ShieldCheck },
+    { path: "/client-support", label: "AI Support", icon: MessageCircle },
     { path: "/settings", label: "Settings", icon: Settings },
     ...(isAdmin ? [{ path: "/admin", label: "Admin Dashboard", icon: Shield }] : []),
   ];
