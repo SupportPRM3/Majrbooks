@@ -166,82 +166,26 @@ const Auth = () => {
     setForgotPasswordEmail("");
   };
 
-  const handleSelectPlanWithTrial = async (tier: SubscriptionTier) => {
-    if (tier === 'trial') return;
-    
-    setCheckoutLoading(tier);
-    
+  const activateTrial = async (loadingKey: string) => {
+    if (!user) return;
+    setCheckoutLoading(loadingKey);
     try {
-      const priceId = SUBSCRIPTION_TIERS[tier].price_id;
-      
-      // Create checkout with 14-day trial
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId, withTrial: true }
-      });
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 14);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ trial_ends_at: trialEnd.toISOString() })
+        .eq('id', user.id);
 
       if (error) throw error;
 
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
+      await checkSubscription();
       toast({
-        variant: "destructive",
-        title: "Checkout failed",
-        description: error.message || "Failed to start checkout",
+        title: "Free trial activated!",
+        description: "You have 14 days of full access. Enjoy!",
       });
-    } finally {
-      setCheckoutLoading(null);
-    }
-  };
-
-  const handleSelectPlan = async (tier: SubscriptionTier) => {
-    if (tier === 'trial') return; // Can't select trial as a plan
-    
-    setCheckoutLoading(tier);
-    
-    try {
-      const priceId = SUBSCRIPTION_TIERS[tier].price_id;
-      
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId }
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Checkout failed",
-        description: error.message || "Failed to start checkout",
-      });
-    } finally {
-      setCheckoutLoading(null);
-    }
-  };
-
-  // Handle starting free trial with credit card via Stripe
-  const handleStartFreeTrial = async (tier: SubscriptionTier = 'pro') => {
-    if (tier === 'trial') return;
-    
-    setCheckoutLoading('trial');
-    
-    try {
-      const priceId = SUBSCRIPTION_TIERS[tier].price_id;
-      
-      // Create checkout with 14-day trial - card will be collected but not charged
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId, withTrial: true }
-      });
-
-      if (error) throw error;
-      
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -251,6 +195,21 @@ const Auth = () => {
     } finally {
       setCheckoutLoading(null);
     }
+  };
+
+  const handleSelectPlanWithTrial = async (tier: SubscriptionTier) => {
+    if (tier === 'trial') return;
+    await activateTrial(tier);
+  };
+
+  const handleSelectPlan = async (tier: SubscriptionTier) => {
+    if (tier === 'trial') return;
+    await activateTrial(tier);
+  };
+
+  const handleStartFreeTrial = async (tier: SubscriptionTier = 'pro') => {
+    if (tier === 'trial') return;
+    await activateTrial('trial');
   };
 
   // Show plan selection after signup - Free trial option + paid plans
