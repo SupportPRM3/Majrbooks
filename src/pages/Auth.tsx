@@ -19,7 +19,7 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const { signIn, signUp, user, subscribed, isTrial, trialDaysRemaining, checkSubscription, isAdmin } = useAuth();
+  const { signIn, signUp, user, subscribed, isTrial, trialDaysRemaining, checkSubscription, isAdmin, isClient } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -54,12 +54,18 @@ const Auth = () => {
     }
   }, [searchParams, toast, checkSubscription, user]);
 
-  // Redirect subscribed users (including trial) or admins to dashboard
+  // Redirect authenticated users to the right place
   useEffect(() => {
-    if (user && (subscribed || isAdmin) && !showPlanSelection) {
+    if (!user) return;
+    // Clients go straight to their portal — no subscription needed
+    if (isClient) {
+      navigate("/client-portal");
+      return;
+    }
+    if ((subscribed || isAdmin) && !showPlanSelection) {
       navigate("/dashboard");
     }
-  }, [user, subscribed, isAdmin, navigate, showPlanSelection]);
+  }, [user, subscribed, isAdmin, isClient, navigate, showPlanSelection]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -324,8 +330,8 @@ const Auth = () => {
     );
   }
 
-  // Show plan selection if user's trial expired and hasn't subscribed (exclude admins)
-  if (user && !subscribed && !isAdmin) {
+  // Show plan selection if user's trial expired and hasn't subscribed (exclude admins and clients)
+  if (user && !subscribed && !isAdmin && !isClient) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
         <div className="w-full max-w-4xl">
