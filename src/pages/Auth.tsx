@@ -62,10 +62,10 @@ const Auth = () => {
       navigate("/client-portal");
       return;
     }
-    if ((subscribed || isAdmin) && !showPlanSelection) {
+    if ((subscribed || isTrial || isAdmin) && !showPlanSelection) {
       navigate("/dashboard");
     }
-  }, [user, subscribed, isAdmin, isClient, navigate, showPlanSelection]);
+  }, [user, subscribed, isTrial, isAdmin, isClient, navigate, showPlanSelection]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,11 +123,12 @@ const Auth = () => {
     }
 
     toast({
-      title: "Account created!",
-      description: "Please select your subscription plan.",
+      title: "Welcome to MajrBooks!",
+      description: "Your 14-day free trial is now active. Enjoy full access!",
     });
-    
-    setShowPlanSelection(true);
+
+    // Trial is already activated in AuthContext.signUp — go straight to dashboard
+    navigate("/dashboard");
     setLoading(false);
   };
 
@@ -244,7 +245,7 @@ const Auth = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-green-700 dark:text-green-400">Start with 14-Day Free Trial</h3>
-                  <p className="text-muted-foreground">Full access to all features • Credit card required • Cancel anytime before trial ends</p>
+                  <p className="text-muted-foreground">Full access to all features • No credit card required • Cancel anytime</p>
                 </div>
               </div>
               <Button 
@@ -266,7 +267,7 @@ const Auth = () => {
           </Card>
 
           <p className="text-center text-xs text-muted-foreground mb-4">
-            Your card won't be charged during the 14-day trial. Cancel anytime before it ends to avoid charges.
+            No credit card required for your free trial. Upgrade to a paid plan anytime to keep access.
           </p>
 
           <div className="text-center mb-4">
@@ -330,8 +331,8 @@ const Auth = () => {
     );
   }
 
-  // Show plan selection if user's trial expired and hasn't subscribed (exclude admins and clients)
-  if (user && !subscribed && !isAdmin && !isClient) {
+  // Show plan selection only if trial is genuinely expired and no paid subscription
+  if (user && !subscribed && !isTrial && !isAdmin && !isClient) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
         <div className="w-full max-w-4xl">

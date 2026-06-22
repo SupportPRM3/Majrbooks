@@ -61,47 +61,61 @@ serve(async (req) => {
       });
     }
 
-    // Non-admin users - check Stripe subscription
+    // Always check profiles.trial_ends_at first — works even without Stripe configured
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('trial_ends_at')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.trial_ends_at) {
+      const trialEnd = new Date(profile.trial_ends_at);
+      const now = new Date();
+      if (trialEnd > now) {
+        logStep("Active free trial found", { trialEndsAt: profile.trial_ends_at });
+        return new Response(JSON.stringify({
+          subscribed: true,
+          product_id: "trial",
+          subscription_end: profile.trial_ends_at,
+          is_trial: true,
+          is_stripe_trial: false,
+          trial_ends_at: profile.trial_ends_at,
+          is_admin: false,
+          can_cancel: false
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      logStep("Trial expired", { trialEndsAt: profile.trial_ends_at });
+    }
+
+    // No active trial — check Stripe for paid subscription
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!stripeKey) {
+      logStep("STRIPE_SECRET_KEY not configured — no paid subscription");
+      return new Response(JSON.stringify({
+        subscribed: false,
+        product_id: null,
+        subscription_end: null,
+        is_trial: false,
+        is_stripe_trial: false,
+        trial_ends_at: null,
+        is_admin: false,
+        can_cancel: false
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
     logStep("Stripe key verified");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
+
     if (customers.data.length === 0) {
       logStep("No Stripe customer found");
-      
-      // Check for legacy trial (profiles.trial_ends_at)
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('trial_ends_at')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.trial_ends_at) {
-        const trialEnd = new Date(profile.trial_ends_at);
-        const now = new Date();
-        
-        if (trialEnd > now) {
-          logStep("Active legacy trial found", { trialEndsAt: profile.trial_ends_at });
-          return new Response(JSON.stringify({
-            subscribed: true,
-            product_id: "trial",
-            subscription_end: profile.trial_ends_at,
-            is_trial: true,
-            is_stripe_trial: false,
-            trial_ends_at: profile.trial_ends_at,
-            is_admin: false,
-            can_cancel: false
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-        }
-      }
-      
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         subscribed: false,
         product_id: null,
         subscription_end: null,
