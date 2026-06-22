@@ -26,6 +26,8 @@ const Auth = () => {
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ email: "", password: "", fullName: "", businessName: "" });
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
 
   // Check for checkout status or plan selection flag in URL
   useEffect(() => {
@@ -74,11 +76,15 @@ const Auth = () => {
     const { error } = await signIn(loginData.email, loginData.password);
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: error.message,
-      });
+      if (error.message?.toLowerCase().includes("email not confirmed")) {
+        setUnconfirmedEmail(loginData.email);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Login failed",
+          description: error.message,
+        });
+      }
       setLoading(false);
       return;
     }
@@ -87,9 +93,22 @@ const Auth = () => {
       title: "Login successful!",
       description: "Redirecting to dashboard...",
     });
-    // Navigate immediately — don't wait for subscription check to finish
     navigate("/dashboard");
     setLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    setResendingConfirmation(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: unconfirmedEmail });
+      if (error) throw error;
+      toast({ title: "Confirmation email sent!", description: "Check your inbox (and spam folder)." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Failed to resend", description: err.message });
+    } finally {
+      setResendingConfirmation(false);
+    }
   };
 
   const ADMIN_EMAILS = ["support@prm3tax.com", "support@majrtaxsoftware.com"];
@@ -400,6 +419,40 @@ const Auth = () => {
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Email not confirmed screen
+  if (unconfirmedEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <Card className="w-full max-w-md shadow-xl border-primary/10">
+          <CardHeader className="space-y-3 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Link to="/"><img src={logoImage} alt="MAJR Books" className="h-20 w-auto object-contain" /></Link>
+            </div>
+            <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+              <Mail className="h-8 w-8 text-amber-600" />
+            </div>
+            <CardTitle className="text-2xl">Confirm Your Email</CardTitle>
+            <CardDescription className="text-base">
+              We sent a confirmation link to <strong>{unconfirmedEmail}</strong>. Click the link in that email to activate your account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Didn't receive it? Check your spam folder, or click below to resend.
+            </p>
+            <Button className="w-full" onClick={handleResendConfirmation} disabled={resendingConfirmation}>
+              {resendingConfirmation ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+              Resend Confirmation Email
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => setUnconfirmedEmail(null)}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Login
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

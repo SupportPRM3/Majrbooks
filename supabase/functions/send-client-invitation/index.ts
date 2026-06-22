@@ -48,8 +48,7 @@ serve(async (req) => {
     console.log(`Sending invitation to ${clientEmail} from ${senderName}`);
 
     // Always use the published app URL for email links & assets.
-    // NOTE: `req.url` is the backend function URL, which does NOT host web assets.
-    const appBaseUrl = "https://pocket-fin-auto.lovable.app";
+    const appBaseUrl = "https://majrbooks.com";
 
     // Use token-based URL if token provided, otherwise fall back to firm-based
     const inviteUrl = inviteToken
@@ -107,82 +106,111 @@ serve(async (req) => {
       });
     }
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>You're Invited to MAJR Books</title>
-        </head>
-        <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.8; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-          <div style="background: #ffffff; padding: 40px 30px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-            <!-- Logo Header -->
-            <div style="margin-bottom: 30px;">
-              <img src="${logoSrc}" alt="MAJR Books Logo" style="display:block; border:0; outline:none; text-decoration:none; width: 200px; height: auto; margin: 0 auto 10px auto;" />
-              <p style="color: #64748b; margin: 8px 0 0 0; font-size: 14px;">Accounting & Financial Management</p>
-            </div>
-            
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 0 0 30px 0;">
-            
-            <!-- Main Content -->
-            <div style="text-align: left;">
-              <h2 style="color: #1e293b; margin-top: 0; font-size: 20px;">Hello ${clientName},</h2>
-              
-              <p style="color: #475569; margin-bottom: 20px;">You're invited to create your secure client account on <strong style="color: #00c978;">MAJR Books</strong>, our accounting and financial management platform designed to streamline collaboration and keep your information organized in one place.</p>
-              
-              <p style="color: #475569; margin-bottom: 10px;">By signing up, you'll be able to:</p>
-              
-              <ul style="color: #64748b; padding-left: 20px; margin-bottom: 25px;">
-                <li style="margin-bottom: 8px;">Securely upload and manage financial documents</li>
-                <li style="margin-bottom: 8px;">Complete onboarding and profile information</li>
-                <li style="margin-bottom: 8px;">Communicate and collaborate with our team more efficiently</li>
-                <li style="margin-bottom: 8px;">Stay informed with real-time updates related to your account</li>
-              </ul>
-              
-              ${message ? `<div style="background: rgba(0, 201, 120, 0.1); padding: 18px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #00c978;"><p style="margin: 0; font-style: italic; color: #475569;">"${message}"</p></div>` : ''}
-              
-              <p style="color: #475569; margin-bottom: 10px;">To get started, please click the button below to create your account:</p>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+    const currentYear = new Date().getFullYear();
+    const emailHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You've Been Invited to MAJR Books</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- Header with logo -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 60%,#4f46e5 100%);padding:36px 40px;text-align:center;">
+              <img src="${logoSrc}" alt="MAJR Books" width="180" style="display:block;margin:0 auto 12px;height:auto;border:0;" />
+              <p style="margin:0;color:#c7d2fe;font-size:13px;letter-spacing:0.5px;">Smart Bookkeeping Made Simple</p>
+            </td>
+          </tr>
+
+          <!-- Greeting banner -->
+          <tr>
+            <td style="background:#4f46e5;padding:18px 40px;text-align:center;">
+              <p style="margin:0;color:#e0e7ff;font-size:15px;font-weight:600;">🎉 &nbsp;You've been invited to join MAJR Books</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <h2 style="margin:0 0 20px;color:#1e1b4b;font-size:22px;font-weight:700;">Hello ${clientName},</h2>
+
+              <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
+                <strong>${senderName}</strong> has invited you to access your secure client portal on
+                <strong style="color:#4f46e5;">MAJR Books</strong> — a professional bookkeeping and financial management platform built for you.
+              </p>
+
+              ${message ? `
+              <div style="background:#f0f0ff;border-left:4px solid #4f46e5;border-radius:6px;padding:16px 20px;margin:24px 0;">
+                <p style="margin:0;color:#3730a3;font-size:14px;font-style:italic;">"${message}"</p>
+                <p style="margin:8px 0 0;color:#6366f1;font-size:13px;font-weight:600;">— ${senderName}</p>
+              </div>` : ''}
+
+              <p style="margin:0 0 12px;color:#334155;font-size:15px;font-weight:600;">With your client portal you can:</p>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:28px;">
+                <tr><td style="padding:6px 0;color:#475569;font-size:14px;">✅ &nbsp;View and download your invoices</td></tr>
+                <tr><td style="padding:6px 0;color:#475569;font-size:14px;">✅ &nbsp;Upload and manage financial documents securely</td></tr>
+                <tr><td style="padding:6px 0;color:#475569;font-size:14px;">✅ &nbsp;Complete your onboarding profile</td></tr>
+                <tr><td style="padding:6px 0;color:#475569;font-size:14px;">✅ &nbsp;Communicate directly with your bookkeeping team</td></tr>
+                <tr><td style="padding:6px 0;color:#475569;font-size:14px;">✅ &nbsp;Access AI-powered bookkeeping assistance</td></tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:32px 0;">
                 <tr>
-                  <td align="center" bgcolor="#00c978" style="background-color: #00c978; border-radius: 8px; padding: 0;">
-                    <a href="${inviteUrl}" target="_blank" style="display: inline-block; padding: 16px 35px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 8px; background-color: #00c978;">Create Your Account</a>
+                  <td align="center">
+                    <a href="${inviteUrl}" target="_blank"
+                       style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:16px 40px;border-radius:10px;letter-spacing:0.3px;">
+                      Accept Invitation &amp; Create Account
+                    </a>
                   </td>
                 </tr>
               </table>
-            </div>
-            
-            <div style="text-align: left;">
-              <p style="color: #64748b; font-size: 15px; margin-top: 25px;">The sign-up process is quick and secure. Once completed, you'll have immediate access to your client portal.</p>
-              
-              <p style="color: #64748b; font-size: 15px;">If you have any questions or need assistance during signup, feel free to reply to this email and our team will be happy to help.</p>
-              
-              <p style="color: #475569; margin-top: 25px;">We look forward to supporting you and working with you through MAJR Books.</p>
-              
-              <p style="color: #475569; margin-top: 30px; margin-bottom: 5px;">Best regards,</p>
-              <p style="color: #1e293b; font-weight: 600; margin-top: 0;">MAJR Books</p>
-              <p style="color: #64748b; font-size: 14px; margin-top: 5px;">support@majrtaxsoftware.com</p>
-            </div>
-            
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 35px 0 25px 0;">
-            
-            <div style="text-align: center;">
-              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                This invitation was sent from MAJR Books<br>
-                © ${new Date().getFullYear()} MAJR Books. All rights reserved.
+
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;text-align:center;">
+                Or copy this link into your browser:
               </p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
+              <p style="margin:0 0 28px;color:#6366f1;font-size:12px;text-align:center;word-break:break-all;">
+                ${inviteUrl}
+              </p>
+
+              <p style="margin:0 0 6px;color:#64748b;font-size:14px;line-height:1.6;">
+                This invitation was sent by your bookkeeping team at PRM3 Tax. If you have any questions, contact us at
+                <a href="mailto:support@prm3tax.com" style="color:#4f46e5;text-decoration:none;">support@prm3tax.com</a> or call <strong>888-575-4776</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center;">
+              <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;">
+                © ${currentYear} MAJR Books by PRM3 Tax &nbsp;|&nbsp;
+                <a href="https://majrbooks.com" style="color:#6366f1;text-decoration:none;">majrbooks.com</a>
+              </p>
+              <p style="margin:0;color:#cbd5e1;font-size:11px;">
+                You received this because ${senderName} invited you. If this was unexpected, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
 
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: 'Majr Books <support@majrtaxsoftware.com>',
+      from: 'MAJR Books <support@majrtaxsoftware.com>',
       to: [clientEmail],
-      subject: `${senderName} has invited you to connect on Majr Books`,
+      subject: `${senderName} invited you to your MAJR Books client portal`,
       html: emailHtml,
       attachments,
     });
