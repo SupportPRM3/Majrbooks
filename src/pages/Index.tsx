@@ -32,8 +32,8 @@ const Index = () => {
 
   // Pricing data
   const pricingPlans = {
-    starter: { monthly: 19 },
-    professional: { monthly: 27 },
+    starter: { monthly: 29 },
+    professional: { monthly: 37 },
     enterprise: { monthly: 97 }
   };
 
@@ -92,15 +92,15 @@ const Index = () => {
                       className="bg-primary hover:bg-primary/90 text-xl px-12 py-7 shadow-xl hover:shadow-primary/60 transition-all duration-300 font-semibold"
                       onClick={() => navigate("/auth")}
                     >
-                      Start Free Trial
+                      Get Started
                     </Button>
                   </motion.div>
-                  
+
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Button 
+                    <Button
                       size="lg"
                       variant="outline"
                       className="text-lg px-8 py-7 shadow-lg border-2 border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 font-semibold"
@@ -114,7 +114,7 @@ const Index = () => {
                   </motion.div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  14-day free trial • Cancel anytime
+                  No setup fees • Cancel anytime
                 </p>
               </div>
             </motion.div>
@@ -533,7 +533,7 @@ const Index = () => {
             >
               <h2 className="text-4xl lg:text-5xl font-bold mb-4">Simple, Transparent Pricing</h2>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-                Choose the plan that fits your business needs. All plans include a 14-day free trial.
+                Choose the plan that fits your business needs. No setup fees, cancel anytime.
               </p>
             </motion.div>
 
@@ -590,7 +590,7 @@ const Index = () => {
                   size="lg"
                   onClick={() => navigate("/auth")}
                 >
-                  Start Free Trial
+                  Get Started
                 </Button>
               </div>
               <div className="space-y-4">
@@ -644,7 +644,7 @@ const Index = () => {
                   size="lg"
                   onClick={() => navigate("/auth")}
                 >
-                  Start Free Trial
+                  Get Started
                 </Button>
               </div>
               <div className="space-y-4">
@@ -697,7 +697,7 @@ const Index = () => {
                   size="lg"
                   onClick={() => navigate("/auth")}
                 >
-                  Start Free Trial
+                  Get Started
                 </Button>
               </div>
               <div className="space-y-4">
@@ -747,15 +747,15 @@ const Index = () => {
               Join thousands of small businesses managing their finances with MAJR Books
             </p>
             <div className="flex flex-col items-center justify-center gap-2">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-primary hover:bg-primary/90 text-xl px-12 py-7 shadow-xl hover:shadow-primary/60 transition-all duration-300 font-semibold"
                 onClick={() => navigate("/auth")}
               >
-                Start Free Trial
+                Get Started
               </Button>
               <p className="text-sm text-muted-foreground">
-                14-day free trial • Cancel anytime
+                No setup fees • Cancel anytime
               </p>
             </div>
           </div>
