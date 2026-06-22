@@ -1,81 +1,64 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-interface ClientRouteGuardProps {
-  children: React.ReactNode;
-  requireAdmin?: boolean;
-  requireStaff?: boolean; // admin or user (not client)
+interface Props {
+  requireClient?: boolean; // only clients — non-clients → /dashboard
+  requireStaff?: boolean;  // user or admin only — clients → /client-portal
+  requireAdmin?: boolean;  // admins only — everyone else → /dashboard
 }
 
 /**
- * Route guard that enforces role-based access
- * - Clients with active trial or subscription get FULL access to all features
- * - Clients without active subscription are redirected to client portal
- * - Admin-only routes redirect non-admins to dashboard
+ * Layout-route guard. Wrap route groups in App.tsx:
+ *
+ *   <Route element={<ClientRouteGuard requireClient />}>
+ *     <Route path="/client-portal" element={<ClientPortal />} />
+ *   </Route>
+ *
+ *   <Route element={<ClientRouteGuard requireStaff />}>
+ *     <Route path="/dashboard" element={<Dashboard />} />
+ *   </Route>
+ *
+ *   <Route element={<ClientRouteGuard requireAdmin />}>
+ *     <Route path="/admin" element={<AdminDashboard />} />
+ *   </Route>
  */
-const ClientRouteGuard = ({ 
-  children, 
+const ClientRouteGuard = ({
+  requireClient = false,
+  requireStaff = false,
   requireAdmin = false,
-  requireStaff = false 
-}: ClientRouteGuardProps) => {
-  const { user, isClient, isAdmin, loading, isTrial, isStripeTrial, subscribed } = useAuth();
+}: Props) => {
+  const { user, isAdmin, isClient, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
 
-  // Not authenticated - redirect to auth
+  // Not logged in → auth
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Require admin access
+  // Admin-only route accessed by non-admin → dashboard
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Staff-only routes (admin or user, not client) - but clients with active trial/subscription bypass this
+  // Staff-only route accessed by a client → client portal
   if (requireStaff && isClient) {
-    // Allow clients with active trial or subscription to access staff routes
-    const hasActiveAccess = isTrial || isStripeTrial || subscribed;
-    if (!hasActiveAccess) {
-      return <Navigate to="/client-portal" replace />;
-    }
+    return <Navigate to="/client-portal" replace />;
   }
 
-  // Client access logic - clients with active trial/subscription get FULL access
-  if (isClient) {
-    const hasActiveAccess = isTrial || isStripeTrial || subscribed;
-    
-    // If client has active trial or subscription, allow full access to all routes
-    if (hasActiveAccess) {
-      return <>{children}</>;
-    }
-    
-    // Clients without active subscription - restrict to client-specific pages
-    const clientAllowedPaths = [
-      '/client-portal',
-      '/client-invoices', 
-      '/client-settings',
-      '/bank-transactions',
-      '/bank-reconciliation',
-    ];
-    
-    const isAllowedPath = clientAllowedPaths.some(path => 
-      location.pathname.startsWith(path)
-    );
-    
-    if (!isAllowedPath) {
-      return <Navigate to="/client-portal" replace />;
-    }
+  // Client-only route accessed by staff/admin → dashboard
+  if (requireClient && !isClient) {
+    return <Navigate to="/dashboard" replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 };
 
 export default ClientRouteGuard;

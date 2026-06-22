@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
+import jsPDF from "jspdf";
+import ClientLayout from "@/components/ClientLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  FileText, 
+import {
+  FileText,
   Search,
   Download,
   CheckCircle,
   Clock,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -37,6 +39,7 @@ const ClientInvoices = () => {
   const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -72,8 +75,125 @@ const ClientInvoices = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+  const downloadInvoicePDF = (invoice: ClientInvoice) => {
+    setDownloadingId(invoice.id);
+    try {
+      const doc = new jsPDF();
+      const amountPaid = invoice.amount_paid || 0;
+      const balance = invoice.amount - amountPaid;
+      const statusLabel = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+
+      // Header bar
+      doc.setFillColor(79, 70, 229);
+      doc.rect(0, 0, 210, 32, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("MajrBooks", 14, 14);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("by PRM3 Tax · support@prm3tax.com · 888-575-4776", 14, 23);
+
+      // Invoice title & number
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(22);
+      doc.setFont("helvetica", "bold");
+      doc.text("INVOICE", 14, 50);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text(invoice.invoice_number, 14, 59);
+
+      // Status badge
+      const statusColors: Record<string, [number, number, number]> = {
+        paid:    [22, 163, 74],
+        pending: [217, 119, 6],
+        sent:    [37, 99, 235],
+        overdue: [220, 38, 38],
+      };
+      const [r, g, b] = statusColors[invoice.status] || [100, 100, 100];
+      doc.setFillColor(r, g, b);
+      doc.roundedRect(155, 44, 40, 10, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text(statusLabel, 175, 50.5, { align: "center" });
+
+      // Divider
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.4);
+      doc.line(14, 66, 196, 66);
+
+      // Dates section
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text("ISSUE DATE", 14, 76);
+      doc.text("DUE DATE", 80, 76);
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(format(new Date(invoice.issue_date), "MMMM d, yyyy"), 14, 84);
+      doc.text(format(new Date(invoice.due_date), "MMMM d, yyyy"), 80, 84);
+
+      // Divider
+      doc.setDrawColor(220, 220, 220);
+      doc.line(14, 90, 196, 90);
+
+      // Table header
+      doc.setFillColor(245, 245, 250);
+      doc.rect(14, 94, 182, 9, "F");
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("DESCRIPTION", 18, 100);
+      doc.text("AMOUNT", 178, 100, { align: "right" });
+
+      // Table row
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(10);
+      doc.text(`Professional Services — ${invoice.invoice_number}`, 18, 112);
+      doc.text(formatCurrency(invoice.amount), 178, 112, { align: "right" });
+
+      // Summary box
+      doc.setDrawColor(220, 220, 220);
+      doc.line(14, 122, 196, 122);
+      const summaryX = 120;
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text("Subtotal", summaryX, 132);
+      doc.text("Amount Paid", summaryX, 142);
+      doc.setTextColor(30, 30, 30);
+      doc.text(formatCurrency(invoice.amount), 196, 132, { align: "right" });
+      doc.setTextColor(22, 163, 74);
+      doc.text(`− ${formatCurrency(amountPaid)}`, 196, 142, { align: "right" });
+
+      // Balance due
+      doc.setFillColor(balance > 0 ? 255 : 240, balance > 0 ? 247 : 253, balance > 0 ? 237 : 246);
+      doc.rect(summaryX - 6, 148, 202 - summaryX, 12, "F");
+      doc.setTextColor(30, 30, 30);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Balance Due", summaryX, 156);
+      doc.setTextColor(balance > 0 ? 217 : 22, balance > 0 ? 119 : 163, balance > 0 ? 6 : 74);
+      doc.text(formatCurrency(balance), 196, 156, { align: "right" });
+
+      // Footer
+      doc.setDrawColor(220, 220, 220);
+      doc.line(14, 275, 196, 275);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Thank you for your business! Questions? Contact support@prm3tax.com or call 888-575-4776.", 105, 281, { align: "center" });
+
+      doc.save(`${invoice.invoice_number}.pdf`);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -123,16 +243,16 @@ const ClientInvoices = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <ClientLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-      </Layout>
+      </ClientLayout>
     );
   }
 
   return (
-    <Layout>
+    <ClientLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -140,7 +260,7 @@ const ClientInvoices = () => {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/client-portal")}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -257,10 +377,13 @@ const ClientInvoices = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              disabled
-                              title="Download coming soon"
+                              onClick={() => downloadInvoicePDF(invoice)}
+                              disabled={downloadingId === invoice.id}
+                              title="Download PDF"
                             >
-                              <Download className="h-4 w-4" />
+                              {downloadingId === invoice.id
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Download className="h-4 w-4" />}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -293,7 +416,7 @@ const ClientInvoices = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </ClientLayout>
   );
 };
 

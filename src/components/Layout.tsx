@@ -57,6 +57,10 @@ import {
   HardDrive,
   Bot,
   MessageCircle,
+  GraduationCap,
+  BookOpen,
+  ListChecks,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import majrLogo from "@/assets/logo-majr-books.jpg";
@@ -84,6 +88,11 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+interface SubNavItem {
+  path: string;
+  label: string;
+}
+
 interface YourBooksItem {
   id: string;
   path: string;
@@ -92,18 +101,23 @@ interface YourBooksItem {
   hasChevron: boolean;
   visible?: boolean;
   module?: string;
+  subItems?: SubNavItem[];
 }
 
-const SortableItem = ({ 
-  item, 
-  isActive, 
+const SortableItem = ({
+  item,
+  isActive,
   isEditMode,
   onToggleVisibility,
-}: { 
-  item: YourBooksItem; 
-  isActive: boolean; 
+  isExpanded,
+  onToggleExpand,
+}: {
+  item: YourBooksItem;
+  isActive: boolean;
   isEditMode: boolean;
   onToggleVisibility: (id: string) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: (id: string) => void;
 }) => {
   const {
     attributes,
@@ -113,6 +127,7 @@ const SortableItem = ({
     transition,
     isDragging,
   } = useSortable({ id: item.id });
+  const location = useLocation();
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -121,49 +136,77 @@ const SortableItem = ({
   };
 
   const Icon = item.icon;
+  const hasSubItems = item.subItems && item.subItems.length > 0;
+
+  const innerContent = (
+    <div className={cn(
+      "flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors group",
+      isActive ? "bg-secondary text-secondary-foreground" : "hover:bg-secondary/50",
+      isDragging && "shadow-lg ring-2 ring-primary",
+      hasSubItems && "cursor-pointer"
+    )}>
+      <div className="flex items-center space-x-3 flex-1">
+        {isEditMode && (
+          <>
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleVisibility(item.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              {item.visible !== false ? (
+                <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              )}
+            </button>
+          </>
+        )}
+        <Icon className={cn("h-4 w-4", item.visible === false && "opacity-40")} />
+        <span className={cn(item.visible === false && "opacity-40")}>{item.label}</span>
+      </div>
+      {item.hasChevron && (
+        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-90")} />
+      )}
+    </div>
+  );
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Link to={item.path}>
-        <div className={cn(
-          "flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors group",
-          isActive ? "bg-secondary text-secondary-foreground" : "hover:bg-secondary/50",
-          isDragging && "shadow-lg ring-2 ring-primary"
-        )}>
-          <div className="flex items-center space-x-3 flex-1">
-            {isEditMode && (
-              <>
-                <div
-                  {...attributes}
-                  {...listeners}
-                  className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onToggleVisibility(item.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  {item.visible !== false ? (
-                    <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                  ) : (
-                    <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                  )}
-                </button>
-              </>
-            )}
-            <Icon className={cn("h-4 w-4", item.visible === false && "opacity-40")} />
-            <span className={cn(item.visible === false && "opacity-40")}>{item.label}</span>
-            
-          </div>
-          {item.hasChevron && (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
+      {hasSubItems ? (
+        <div onClick={() => onToggleExpand?.(item.id)}>
+          {innerContent}
         </div>
-      </Link>
+      ) : (
+        <Link to={item.path}>
+          {innerContent}
+        </Link>
+      )}
+      {hasSubItems && isExpanded && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border/40 pl-3">
+          {item.subItems!.map((sub) => (
+            <Link key={sub.path + sub.label} to={sub.path}>
+              <div className={cn(
+                "px-3 py-1.5 text-xs rounded-md transition-colors cursor-pointer",
+                location.pathname === sub.path
+                  ? "bg-secondary text-secondary-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              )}>
+                {sub.label}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -197,27 +240,121 @@ const Layout = ({ children }: LayoutProps) => {
 
   const defaultYourBooksItems: YourBooksItem[] = [
     { id: "client-overview", path: "/dashboard", label: "Client overview", icon: Users, hasChevron: false, module: "dashboard" },
-    { id: "dashboards", path: "/financial-dashboard", label: "Dashboards", icon: LayoutDashboard, hasChevron: true, module: "dashboard" },
+    {
+      id: "dashboards", path: "/financial-dashboard", label: "Dashboards", icon: LayoutDashboard, hasChevron: true, module: "dashboard",
+      subItems: [
+        { path: "/financial-dashboard", label: "Financial Dashboard" },
+        { path: "/reports", label: "Reports Overview" },
+        { path: "/standard-reports", label: "Standard Reports" },
+      ],
+    },
     { id: "tasks", path: "/tasks", label: "Tasks", icon: FileText, hasChevron: false, module: "tasks" },
-    { id: "transactions", path: "/bank-transactions", label: "Transactions", icon: Receipt, hasChevron: true, module: "transactions" },
-    { id: "sales", path: "/invoices", label: "Sales", icon: DollarSign, hasChevron: true, module: "invoices" },
-    { id: "expenses", path: "/expense-tracking", label: "Expenses", icon: CreditCard, hasChevron: true, module: "expenses" },
-    { id: "reports", path: "/reports", label: "Reports", icon: BarChart3, hasChevron: true, module: "reports" },
-    { id: "payroll", path: "/payroll-setup", label: "Payroll", icon: UsersRound, hasChevron: true, module: "payroll" },
+    {
+      id: "transactions", path: "/bank-transactions", label: "Transactions", icon: Receipt, hasChevron: true, module: "transactions",
+      subItems: [
+        { path: "/bank-transactions", label: "Bank Transactions" },
+        { path: "/bank-reconciliation", label: "Reconciliation" },
+        { path: "/journal-entries", label: "Journal Entries" },
+        { path: "/chart-of-accounts", label: "Chart of Accounts" },
+        { path: "/general-ledger", label: "General Ledger" },
+      ],
+    },
+    {
+      id: "sales", path: "/invoices", label: "Sales", icon: DollarSign, hasChevron: true, module: "invoices",
+      subItems: [
+        { path: "/invoices", label: "Invoices" },
+        { path: "/invoice-templates", label: "Invoice Templates" },
+        { path: "/invoice/new", label: "New Invoice" },
+        { path: "/revenue-by-client", label: "Revenue by Client" },
+        { path: "/sales-tax-summary", label: "Sales Tax Summary" },
+      ],
+    },
+    {
+      id: "expenses", path: "/expense-tracking", label: "Expenses", icon: CreditCard, hasChevron: true, module: "expenses",
+      subItems: [
+        { path: "/expense-tracking", label: "Expense Tracking" },
+        { path: "/expenses", label: "All Expenses" },
+      ],
+    },
+    {
+      id: "reports", path: "/reports", label: "Reports", icon: BarChart3, hasChevron: true, module: "reports",
+      subItems: [
+        { path: "/reports", label: "All Reports" },
+        { path: "/profit-and-loss", label: "Profit & Loss" },
+        { path: "/balance-sheet", label: "Balance Sheet" },
+        { path: "/cash-flow", label: "Cash Flow" },
+        { path: "/trial-balance", label: "Trial Balance" },
+        { path: "/revenue-by-client", label: "Revenue by Client" },
+        { path: "/journal-entry-report", label: "Journal Entry Report" },
+      ],
+    },
+    {
+      id: "payroll", path: "/payroll-setup", label: "Payroll", icon: UsersRound, hasChevron: true, module: "payroll",
+      subItems: [
+        { path: "/payroll-setup", label: "Payroll Setup" },
+        { path: "/payroll-runs", label: "Payroll Runs" },
+        { path: "/timesheets", label: "Timesheets" },
+        { path: "/1099-history", label: "1099 History" },
+      ],
+    },
     { id: "time-dashboard", path: "/time-tracking-dashboard", label: "Time Dashboard", icon: BarChartIcon, hasChevron: false, module: "payroll" },
     { id: "time-analytics", path: "/time-tracking-analytics", label: "Time Analytics", icon: TrendingUp, hasChevron: false, module: "payroll" },
     { id: "billable-forecast", path: "/billable-forecast", label: "Billable Forecast", icon: DollarSign, hasChevron: false, module: "payroll" },
     { id: "pto", path: "/pto-management", label: "PTO", icon: Calendar, hasChevron: false, module: "payroll" },
-    { id: "time", path: "/transactions", label: "Time", icon: RotateCcw, hasChevron: true, module: "transactions" },
+    {
+      id: "time", path: "/timesheets", label: "Time", icon: RotateCcw, hasChevron: true, module: "transactions",
+      subItems: [
+        { path: "/timesheets", label: "Timesheets" },
+        { path: "/time-tracking-dashboard", label: "Time Dashboard" },
+        { path: "/time-tracking-analytics", label: "Time Analytics" },
+        { path: "/billable-forecast", label: "Billable Forecast" },
+        { path: "/pto-management", label: "PTO Management" },
+      ],
+    },
     { id: "projects", path: "/projects", label: "Projects", icon: Building2, hasChevron: false, module: "dashboard" },
-    { id: "financial-planning", path: "/financial-planning", label: "Financial planning", icon: Lightbulb, hasChevron: true, module: "reports" },
-    { id: "workflow-automation", path: "/workflow-automation", label: "Workflow automation", icon: RefreshCw, hasChevron: true, module: "workflow-automation" },
-    { id: "taxes", path: "/tax-returns", label: "Taxes", icon: FileSpreadsheet, hasChevron: true, module: "tax-returns" },
-    { id: "lending-banking", path: "/bank-transactions", label: "Lending & banking", icon: Wallet, hasChevron: true, module: "transactions" },
-    { id: "commerce", path: "/invoices", label: "Commerce", icon: TrendingUp, hasChevron: true, module: "invoices" },
+    {
+      id: "financial-planning", path: "/financial-planning", label: "Financial planning", icon: Lightbulb, hasChevron: true, module: "reports",
+      subItems: [
+        { path: "/financial-planning", label: "Planning Overview" },
+        { path: "/financial-dashboard", label: "Financial Dashboard" },
+        { path: "/cash-flow", label: "Cash Flow" },
+      ],
+    },
+    {
+      id: "workflow-automation", path: "/workflow-automation", label: "Workflow automation", icon: RefreshCw, hasChevron: true, module: "workflow-automation",
+      subItems: [
+        { path: "/workflow-automation", label: "All Workflows" },
+      ],
+    },
+    {
+      id: "taxes", path: "/tax-returns", label: "Taxes", icon: FileSpreadsheet, hasChevron: true, module: "tax-returns",
+      subItems: [
+        { path: "/tax-returns", label: "Tax Returns" },
+        { path: "/1099-history", label: "1099 History" },
+      ],
+    },
+    {
+      id: "lending-banking", path: "/bank-transactions", label: "Lending & banking", icon: Wallet, hasChevron: true, module: "transactions",
+      subItems: [
+        { path: "/bank-transactions", label: "Bank Transactions" },
+        { path: "/bank-reconciliation", label: "Reconciliation" },
+      ],
+    },
+    {
+      id: "commerce", path: "/invoices", label: "Commerce", icon: TrendingUp, hasChevron: true, module: "invoices",
+      subItems: [
+        { path: "/invoices", label: "Invoices" },
+        { path: "/invoice-templates", label: "Templates" },
+        { path: "/sales-tax-summary", label: "Sales Tax" },
+      ],
+    },
   ];
 
   const [yourBooksItems, setYourBooksItems] = useState<YourBooksItem[]>(defaultYourBooksItems);
+  const [expandedBooks, setExpandedBooks] = useState<Record<string, boolean>>({});
+  const toggleBookExpand = (id: string) => {
+    setExpandedBooks(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -380,22 +517,27 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/client-invoices", label: "My Invoices", icon: Receipt },
     { path: "/client-ai", label: "AI Assistant", icon: Bot },
     { path: "/client-support", label: "Support", icon: MessageCircle },
+    { path: "/training", label: "Training", icon: GraduationCap },
     { path: "/client-settings", label: "Settings", icon: Settings },
   ];
 
   // Admin/User practice items - full navigation
   const fullPracticeItems: Array<{ path: string; label: string; icon: any; hasSubmenu?: boolean; isExternal?: boolean }> = [
     { path: "/dashboard", label: "Clients", icon: Users },
+    { path: "/dashboard", label: "Overview", icon: LayoutDashboard },
+    { path: "/bookkeeping", label: "Bookkeeping", icon: BookOpen },
+    { path: "/payroll-dashboard", label: "Payroll", icon: UsersRound },
+    { path: "/multi-entity", label: "Multi-entity", icon: Layers },
     { path: "/client-invitations", label: "Client Invitations", icon: UserPlus },
     { path: "/invoices", label: "Billing", icon: Receipt, hasSubmenu: true },
     { path: "/tax-returns", label: "Tax Returns", icon: FileText },
-    { path: "/schedule-c", label: "Schedule C Prep", icon: FileSpreadsheet },
     { path: "https://taxmajr.ai/", label: "Tax Majr AI", icon: Sparkles, isExternal: true },
     { path: "/workflow-automation", label: "Workflow Automation", icon: RefreshCw },
     { path: "/transactions", label: "Work", icon: Briefcase },
     { path: "/team", label: "Team", icon: UserCheck },
     { path: "/user-permissions", label: "User Permissions", icon: ShieldCheck },
     { path: "/client-support", label: "AI Support", icon: MessageCircle },
+    { path: "/training", label: "Training", icon: GraduationCap },
     { path: "/settings", label: "Settings", icon: Settings },
     ...(isAdmin ? [{ path: "/admin", label: "Admin Dashboard", icon: Shield }] : []),
   ];
@@ -564,7 +706,12 @@ const Layout = ({ children }: LayoutProps) => {
               <nav className="space-y-1">
                 {practiceItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
+                  const [itemPath, itemQuery] = item.path.split("?");
+                  const isActive = itemQuery
+                    ? location.pathname === itemPath && location.search === `?${itemQuery}`
+                    : item.path === "/dashboard"
+                      ? location.pathname === "/dashboard"
+                      : location.pathname === item.path;
                   
                   if (item.hasSubmenu) {
                     return (
@@ -705,6 +852,8 @@ const Layout = ({ children }: LayoutProps) => {
                               isActive={isActive}
                               isEditMode={isEditMode}
                               onToggleVisibility={handleToggleVisibility}
+                              isExpanded={!!expandedBooks[item.id]}
+                              onToggleExpand={toggleBookExpand}
                             />
                           );
                         })}

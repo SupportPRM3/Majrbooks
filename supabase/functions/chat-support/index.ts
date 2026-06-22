@@ -107,6 +107,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const err = await response.text();
+      console.error("Anthropic API error:", response.status, err);
       return new Response(JSON.stringify({ error: `Anthropic API error: ${err}` }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

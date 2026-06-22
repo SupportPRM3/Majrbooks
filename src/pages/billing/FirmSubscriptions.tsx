@@ -56,9 +56,9 @@ interface PaymentHistory {
 }
 
 const plans = [
-  { name: "Starter", price: 19, seats: 5 },
-  { name: "Professional", price: 27, seats: 10 },
-  { name: "Enterprise", price: 97, seats: 50 },
+  { name: "Starter", price: SUBSCRIPTION_TIERS.starter.price, seats: 5, tier: "starter" as const },
+  { name: "Professional", price: SUBSCRIPTION_TIERS.pro.price, seats: 10, tier: "pro" as const },
+  { name: "Enterprise", price: SUBSCRIPTION_TIERS.enterprise.price, seats: 50, tier: "enterprise" as const },
 ];
 
 const mockPaymentHistory: PaymentHistory[] = [];
@@ -128,26 +128,19 @@ const FirmSubscriptions = () => {
       return;
     }
 
+    const plan = plans.find(p => p.name === selectedPlan);
+    if (!plan) { toast.error("Invalid plan selected"); return; }
+
+    const priceId = SUBSCRIPTION_TIERS[plan.tier].price_id;
+    if (!priceId || priceId.startsWith("price_") && priceId.length < 20) {
+      toast.error("This plan is not yet available for online checkout. Please contact support.");
+      return;
+    }
+
     setCheckoutLoading(true);
-    
     try {
-      // Map plan name to price ID from SUBSCRIPTION_TIERS
-      let priceId: string | null = null;
-      if (selectedPlan === "Starter") {
-        priceId = SUBSCRIPTION_TIERS.starter.price_id;
-      } else if (selectedPlan === "Professional") {
-        priceId = SUBSCRIPTION_TIERS.pro.price_id;
-      } else if (selectedPlan === "Enterprise") {
-        priceId = SUBSCRIPTION_TIERS.enterprise.price_id;
-      }
-
-      if (!priceId) {
-        toast.error("Invalid plan selected");
-        return;
-      }
-
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId }
+        body: { priceId, withTrial: false }
       });
 
       if (error) throw error;
@@ -497,10 +490,9 @@ const FirmSubscriptions = () => {
                 })}
               </div>
               
-              {/* Trial Info */}
-              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                <p className="text-sm text-amber-800">
-                  <strong>14-day free trial included.</strong> Your card will be charged automatically after the trial ends unless you cancel.
+              <div className="p-3 rounded-lg bg-muted border">
+                <p className="text-sm text-muted-foreground">
+                  You will be redirected to our secure Stripe checkout to complete your payment. Cancel anytime from your account settings.
                 </p>
               </div>
             </div>
@@ -515,7 +507,7 @@ const FirmSubscriptions = () => {
                     Processing...
                   </>
                 ) : (
-                  "Start Free Trial"
+                  "Subscribe Now"
                 )}
               </Button>
             </DialogFooter>

@@ -1,460 +1,274 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import ClientLayout from "@/components/ClientLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FileText, 
-  DollarSign, 
-  Upload, 
-  Phone, 
-  Mail,
+import { format } from "date-fns";
+import {
+  FileText,
+  DollarSign,
   CheckCircle,
   Clock,
   AlertCircle,
-  TrendingUp,
-  Folder,
+  FolderOpen,
   HelpCircle,
-  Building2,
-  Receipt,
   ArrowRight,
-  Sparkles
+  ChevronRight,
+  TrendingDown,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import ClientWelcomeModal from "@/components/ClientWelcomeModal";
 
-interface ClientSummary {
-  totalInvoices: number;
-  paidInvoices: number;
-  pendingAmount: number;
-  lastPaymentDate: string | null;
-}
-
-interface RecentInvoice {
+interface Invoice {
   id: string;
   invoice_number: string;
   amount: number;
+  amount_paid: number;
   status: string;
   due_date: string;
+  issue_date: string;
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  paid:    { label: "Paid",    color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: <CheckCircle className="h-4 w-4 text-green-500" /> },
+  pending: { label: "Pending", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",  icon: <Clock className="h-4 w-4 text-amber-500" /> },
+  sent:    { label: "Sent",    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",     icon: <Clock className="h-4 w-4 text-blue-500" /> },
+  overdue: { label: "Overdue", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",        icon: <AlertCircle className="h-4 w-4 text-red-500" /> },
+  draft:   { label: "Draft",   color: "bg-gray-100 text-gray-600",                                            icon: <Clock className="h-4 w-4 text-gray-400" /> },
+};
+
+function fmt(n: number) {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
 const ClientPortal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [summary, setSummary] = useState<ClientSummary>({
-    totalInvoices: 0,
-    paidInvoices: 0,
-    pendingAmount: 0,
-    lastPaymentDate: null,
-  });
-  const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
-
-  // Check if this is the user's first visit — redirect to onboarding if not done
-  useEffect(() => {
-    if (user) {
-      const onboardingDone = localStorage.getItem(`majrbooks_onboarding_done_${user.id}`);
-      if (!onboardingDone) {
-        // New client — send to onboarding
-        navigate("/client-onboarding");
-        return;
-      }
-
-      const welcomeSeenKey = `majrbooks_welcome_seen_${user.id}`;
-      const hasSeenWelcome = localStorage.getItem(welcomeSeenKey);
-      if (!hasSeenWelcome) {
-        setShowWelcomeModal(true);
-        localStorage.setItem(welcomeSeenKey, "true");
-      }
-    }
-  }, [user]);
 
   useEffect(() => {
-    if (user) {
-      loadClientData();
-    }
+    if (user) loadData();
   }, [user]);
 
-  const loadClientData = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Fetch invoices for this client (where client_email matches user email)
-      const { data: invoices, error } = await supabase
+      const { data } = await supabase
         .from("invoices")
         .select("id, invoice_number, amount, amount_paid, status, due_date, issue_date")
-        .eq("client_email", user?.email)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      if (invoices) {
-        const totalInvoices = invoices.length;
-        const paidInvoices = invoices.filter(inv => inv.status === "paid").length;
-        const pendingAmount = invoices
-          .filter(inv => inv.status !== "paid")
-          .reduce((sum, inv) => sum + (inv.amount - (inv.amount_paid || 0)), 0);
-        
-        // Find last payment date
-        const paidInvoicesList = invoices.filter(inv => inv.status === "paid");
-        const lastPaymentDate = paidInvoicesList.length > 0 
-          ? paidInvoicesList[0].issue_date 
-          : null;
-
-        setSummary({
-          totalInvoices,
-          paidInvoices,
-          pendingAmount,
-          lastPaymentDate,
-        });
-
-        setRecentInvoices(invoices.slice(0, 5).map(inv => ({
-          id: inv.id,
-          invoice_number: inv.invoice_number,
-          amount: inv.amount,
-          status: inv.status,
-          due_date: inv.due_date,
-        })));
-      }
-    } catch (error) {
-      console.error("Error loading client data:", error);
+        .or(`client_email.eq.${user?.email},client_user_id.eq.${user?.id}`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setInvoices(data || []);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-  };
+  const totalInvoices = invoices.length;
+  const paidCount = invoices.filter(i => i.status === "paid").length;
+  const outstanding = invoices
+    .filter(i => i.status !== "paid" && i.status !== "draft")
+    .reduce((sum, i) => sum + (i.amount - (i.amount_paid || 0)), 0);
+  const overdueCount = invoices.filter(i => i.status === "overdue").length;
+  const recent = invoices.slice(0, 5);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "paid":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "pending":
-      case "sent":
-        return <Clock className="h-4 w-4 text-amber-500" />;
-      case "overdue":
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </Layout>
-    );
-  }
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "there";
 
   return (
-    <Layout>
-      <ClientWelcomeModal open={showWelcomeModal} onOpenChange={setShowWelcomeModal} />
+    <ClientLayout>
       <div className="space-y-6">
-        {/* Welcome Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Welcome to Your Portal</h1>
-          <p className="text-muted-foreground mt-1">
-            View your invoices, documents, and account information
-          </p>
-        </div>
 
-        {/* Get Started Section */}
-        <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Get paid or track your work — it starts here!
-            </CardTitle>
-            <CardDescription className="text-base">
-              You're all set to manage your business in one place. Choose what you'd like to do below:
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Create Invoice Option */}
-              <Card 
-                className="group cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
-                onClick={() => navigate("/invoice")}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-3 rounded-full group-hover:bg-primary/20 transition-colors">
-                      <FileText className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        📄 Create an Invoice
-                        <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </h3>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        Send a professional invoice to your client and get paid faster.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Record Transaction Option */}
-              <Card 
-                className="group cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
-                onClick={() => navigate("/bank-transactions")}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-amber-500/10 p-3 rounded-full group-hover:bg-amber-500/20 transition-colors">
-                      <Receipt className="h-6 w-6 text-amber-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        🧾 Record a Transaction
-                        <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </h3>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        Track income or expenses to keep your books accurate and organized.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              👉 Select an option to get started. You can do this anytime — we'll guide you step by step!
+        {/* Welcome */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Welcome back, {displayName} 👋
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-0.5 text-sm">
+              Here's an overview of your account
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Invoices</p>
-                  <p className="text-2xl font-bold">{summary.totalInvoices}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Invoices</p>
+                  <p className="text-2xl font-bold mt-0.5">{totalInvoices}</p>
                 </div>
-                <div className="bg-primary/10 p-3 rounded-full">
-                  <FileText className="h-6 w-6 text-primary" />
+                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Paid Invoices</p>
-                  <p className="text-2xl font-bold text-green-600">{summary.paidInvoices}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Paid</p>
+                  <p className="text-2xl font-bold mt-0.5 text-green-600">{paidCount}</p>
                 </div>
-                <div className="bg-green-500/10 p-3 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-green-500" />
+                <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Outstanding Balance</p>
-                  <p className="text-2xl font-bold text-amber-600">{formatCurrency(summary.pendingAmount)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Outstanding</p>
+                  <p className="text-2xl font-bold mt-0.5 text-amber-600">{fmt(outstanding)}</p>
                 </div>
-                <div className="bg-amber-500/10 p-3 rounded-full">
-                  <DollarSign className="h-6 w-6 text-amber-500" />
+                <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-amber-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Overdue</p>
+                  <p className={`text-2xl font-bold mt-0.5 ${overdueCount > 0 ? "text-red-600" : "text-gray-900 dark:text-white"}`}>
+                    {overdueCount}
+                  </p>
+                </div>
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${overdueCount > 0 ? "bg-red-100 dark:bg-red-900/30" : "bg-gray-100 dark:bg-gray-800"}`}>
+                  <TrendingDown className={`h-5 w-5 ${overdueCount > 0 ? "text-red-600" : "text-gray-400"}`} />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Invoices */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Recent Invoices
-              </CardTitle>
-              <CardDescription>
-                Your latest billing statements
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentInvoices.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No invoices found for your account.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {recentInvoices.map((invoice) => (
-                    <div 
-                      key={invoice.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        {getStatusIcon(invoice.status)}
-                        <div>
-                          <p className="font-medium">{invoice.invoice_number}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Due: {format(new Date(invoice.due_date), "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(invoice.amount)}</p>
-                        <Badge 
-                          variant={invoice.status === "paid" ? "default" : "secondary"}
-                          className="capitalize"
-                        >
-                          {invoice.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={() => navigate("/client-invoices")}
-              >
-                View All Invoices
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Quick Actions & Support */}
-          <div className="space-y-6">
-            {/* AI Assessment CTA */}
-            <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-primary/8 to-primary/5">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
-                    <Sparkles className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-base">AI Bookkeeping Assessment</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Get your personalized bookkeeping health score and an AI-powered action plan in 3 minutes.
-                    </p>
-                    <Button className="mt-3 w-full" onClick={() => navigate("/client-ai")}>
-                      Start Free Assessment
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
+          {/* Recent Invoices */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">Recent Invoices</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => navigate("/client-invoices")} className="text-primary text-xs">
+                    View all <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
                 </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">No invoices yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {recent.map((inv) => {
+                      const cfg = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
+                      const balance = inv.amount - (inv.amount_paid || 0);
+                      return (
+                        <div
+                          key={inv.id}
+                          className="flex items-center gap-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded-lg transition-colors cursor-pointer"
+                          onClick={() => navigate("/client-invoices")}
+                        >
+                          <div className="flex-shrink-0">{cfg.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{inv.invoice_number}</p>
+                            <p className="text-xs text-gray-500">Due {format(new Date(inv.due_date), "MMM d, yyyy")}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-semibold">{fmt(inv.amount)}</p>
+                            <Badge className={`text-xs border-0 mt-0.5 ${cfg.color}`}>{cfg.label}</Badge>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
+          </div>
+
+          {/* Right column */}
+          <div className="space-y-4">
 
             {/* Quick Actions */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Quick Actions
-                </CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  onClick={() => navigate("/client-invoices")}
-                >
-                  <FileText className="h-4 w-4" />
-                  View & Pay Invoices
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  onClick={() => navigate("/bank-transactions")}
-                >
-                  <Building2 className="h-4 w-4" />
-                  Connect Bank Account
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  onClick={() => navigate("/client-ai")}
-                >
-                  <Receipt className="h-4 w-4" />
-                  Bookkeeping AI Chat
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  onClick={() => setShowWelcomeModal(true)}
-                >
-                  <Folder className="h-4 w-4" />
-                  Getting Started Guide
-                </Button>
+              <CardContent className="space-y-2">
+                {[
+                  { icon: FileText, label: "View My Invoices", path: "/client-invoices", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20" },
+                  { icon: FolderOpen, label: "My Documents", path: "/client-documents", color: "text-purple-600 bg-purple-50 dark:bg-purple-900/20" },
+                  { icon: HelpCircle, label: "Get Support", path: "/client-support", color: "text-green-600 bg-green-50 dark:bg-green-900/20" },
+                ].map((action) => (
+                  <button
+                    key={action.path}
+                    onClick={() => navigate(action.path)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                  >
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${action.color}`}>
+                      <action.icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{action.label}</span>
+                    <ChevronRight className="h-4 w-4 text-gray-300 ml-auto" />
+                  </button>
+                ))}
               </CardContent>
             </Card>
 
-            {/* Contact Support */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Need Help?</CardTitle>
-                <CardDescription>
-                  Contact your bookkeeper for assistance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  onClick={() => setShowWelcomeModal(true)}
-                >
-                  <HelpCircle className="h-4 w-4" />
-                  Getting Started Guide
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  asChild
-                >
-                  <a href="mailto:support@prm3tax.com">
-                    <Mail className="h-4 w-4" />
-                    Email Support
+            {/* Need Help */}
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-primary" />
+                  <p className="font-semibold text-sm">Need Help?</p>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Your bookkeeper is here for you. Contact us directly anytime.
+                </p>
+                <div className="space-y-2">
+                  <a
+                    href="mailto:support@prm3tax.com"
+                    className="flex items-center gap-2 text-xs text-primary hover:underline font-medium"
+                  >
+                    support@prm3tax.com
                   </a>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  asChild
-                >
-                  <a href="tel:888-575-4776">
-                    <Phone className="h-4 w-4" />
-                    Call Support: 888-575-4776
+                  <a
+                    href="tel:888-575-4776"
+                    className="flex items-center gap-2 text-xs text-primary hover:underline font-medium"
+                  >
+                    888-575-4776
                   </a>
+                </div>
+                <Button size="sm" className="w-full" onClick={() => navigate("/client-support")}>
+                  Open Support Chat
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
-
-        {/* Disclaimer */}
-        <Card className="bg-muted/30 border-muted">
-          <CardContent className="pt-6">
-            <p className="text-xs text-muted-foreground text-center">
-              This portal provides access to your account information and invoices. 
-              For questions about specific charges, tax implications, or financial advice, 
-              please contact your bookkeeper or tax professional directly.
-            </p>
-          </CardContent>
-        </Card>
       </div>
-    </Layout>
+    </ClientLayout>
   );
 };
 

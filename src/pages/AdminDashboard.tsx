@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,12 +38,29 @@ import AdminSecuritySettings from "@/components/admin/AdminSecuritySettings";
 const AdminDashboard = () => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [lastActivity, setLastActivity] = useState(Date.now());
-  const [activeTab, setActiveTab] = useState("overview");
-  const AUTO_LOGOUT_TIME = 15 * 60 * 1000; // 15 minutes
+  const VALID_TABS = ["overview", "users", "security", "audit", "system"];
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get("tab");
+    return VALID_TABS.includes(t ?? "") ? t! : "overview";
+  });
+  const AUTO_LOGOUT_TIME = 15 * 60 * 1000;
+
+  // Keep activeTab in sync when sidebar links change the URL
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    const resolved = VALID_TABS.includes(t ?? "") ? t! : "overview";
+    setActiveTab(resolved);
+  }, [searchParams]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams(value === "overview" ? {} : { tab: value });
+  };
 
   const handleBackToOverview = () => {
-    setActiveTab("overview");
+    handleTabChange("overview");
   };
 
   // Redirect non-admins
@@ -226,7 +243,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="overview" className="space-y-4" value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="grid grid-cols-5 w-full max-w-2xl">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>

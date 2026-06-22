@@ -29,20 +29,28 @@ const UpgradeModal = ({ open, onOpenChange }: UpgradeModalProps) => {
   const [portalLoading, setPortalLoading] = useState(false);
   const [isYearly, setIsYearly] = useState(false);
 
+  const isPlaceholderId = (id: string | null): boolean =>
+    !id || (id.startsWith("price_") && id.length < 20);
+
   const handleUpgrade = async (tier: SubscriptionTier) => {
     if (tier === 'trial') return;
-    
+
+    const tierConfig = SUBSCRIPTION_TIERS[tier];
+    const priceId = isYearly ? tierConfig.yearly_price_id : tierConfig.price_id;
+
+    if (isPlaceholderId(priceId)) {
+      toast.error('This plan option is not yet available for online checkout. Please contact support@prm3tax.com.');
+      return;
+    }
+
     setCheckoutLoading(tier);
     try {
-      const tierConfig = SUBSCRIPTION_TIERS[tier];
-      const priceId = isYearly ? tierConfig.yearly_price_id : tierConfig.price_id;
-      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { priceId, withTrial: false }
       });
 
       if (error) throw error;
-      
+
       if (data?.url) {
         window.open(data.url, '_blank');
         onOpenChange(false);
@@ -109,6 +117,11 @@ const UpgradeModal = ({ open, onOpenChange }: UpgradeModalProps) => {
               Yearly <span className="text-green-600 font-semibold">(Save 2 months!)</span>
             </span>
           </div>
+          {isYearly && (
+            <p className="text-center text-xs text-amber-600">
+              Yearly billing is coming soon. Monthly pricing will be used at checkout.
+            </p>
+          )}
 
           {/* Current subscription info for paid users */}
           {subscribed && !isTrial && currentPlanName && (

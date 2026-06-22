@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ClientRouteGuard from "@/components/ClientRouteGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -70,6 +71,9 @@ import Resources from "./pages/Resources";
 import GettingStartedGuide from "./pages/GettingStartedGuide";
 import UserPermissions from "./pages/UserPermissions";
 import AdminDashboard from "./pages/AdminDashboard";
+import BookkeepingDashboard from "./pages/BookkeepingDashboard";
+import PayrollDashboard from "./pages/PayrollDashboard";
+import MultiEntity from "./pages/MultiEntity";
 import InvoicesGuide from "./pages/guides/InvoicesGuide";
 import ReconcileAccountsGuide from "./pages/guides/ReconcileAccountsGuide";
 import ExpenseTrackingGuide from "./pages/guides/ExpenseTrackingGuide";
@@ -94,7 +98,8 @@ import ClientSettings from "./pages/ClientSettings";
 import ClientBookkeepingAI from "./pages/ClientBookkeepingAI";
 import ClientOnboarding from "./pages/ClientOnboarding";
 import ClientSupport from "./pages/ClientSupport";
-import ScheduleC from "./pages/ScheduleC";
+import ClientDocuments from "./pages/ClientDocuments";
+import Training from "./pages/Training";
 
 const queryClient = new QueryClient();
 
@@ -106,96 +111,114 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* ── Public (no auth required) ── */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/client-portal" element={<ClientPortal />} />
-            <Route path="/client-invoices" element={<ClientInvoices />} />
-            <Route path="/client/:id" element={<ClientDetails />} />
-            <Route path="/payroll-setup" element={<PayrollSetup />} />
-            <Route path="/payroll-runs" element={<PayrollRuns />} />
-          <Route path="/timesheets" element={<Timesheets />} />
-          <Route path="/time-tracking-dashboard" element={<TimeTrackingDashboard />} />
-          <Route path="/time-tracking-analytics" element={<TimeTrackingAnalytics />} />
-          <Route path="/billable-forecast" element={<BillableHoursForecast />} />
-          <Route path="/pto-management" element={<PTOManagement />} />
-          <Route path="/1099-history" element={<Form1099History />} />
-            <Route path="/payroll/:id" element={<Payroll />} />
-            <Route path="/bulk-client-upload" element={<BulkClientUpload />} />
-            <Route path="/bulk-client-numbers" element={<BulkClientNumbers />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/bank-transactions" element={<BankTransactions />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/invoice-templates" element={<InvoiceTemplates />} />
-            <Route path="/tax-returns" element={<TaxReturns />} />
-            <Route path="/schedule-c" element={<ScheduleC />} />
-            <Route path="/tax-majr-ai" element={<TaxMajrAiLogin />} />
-            <Route path="/tax-majr-ai-dashboard" element={<TaxMajrAi />} />
-            <Route path="/team" element={<Team />} />
-            <Route path="/user-permissions" element={<UserPermissions />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/standard-reports" element={<StandardReports />} />
-            <Route path="/expense-tracking" element={<ExpenseTracking />} />
-            <Route path="/expenses" element={<Expenses />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/client-settings" element={<ClientSettings />} />
-            <Route path="/client-ai" element={<ClientBookkeepingAI />} />
-            <Route path="/client-support" element={<ClientSupport />} />
-            <Route path="/client-onboarding" element={<ClientOnboarding />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/financial-planning" element={<FinancialPlanning />} />
-            <Route path="/workflow-automation" element={<WorkflowAutomation />} />
-            <Route path="/accounting" element={<Accounting />} />
-            <Route path="/journal-entries" element={<JournalEntries />} />
-            <Route path="/journal-entry-report" element={<JournalEntryReport />} />
-            <Route path="/profit-and-loss" element={<ProfitAndLoss />} />
-            <Route path="/balance-sheet" element={<BalanceSheet />} />
-            <Route path="/cash-flow" element={<CashFlow />} />
-            <Route path="/general-ledger" element={<GeneralLedger />} />
-            <Route path="/revenue-by-client" element={<RevenueByClient />} />
-            <Route path="/trial-balance" element={<TrialBalance />} />
-            <Route path="/bank-reconciliation" element={<BankReconciliation />} />
-            <Route path="/sales-tax-summary" element={<SalesTaxSummary />} />
-            <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
-            <Route path="/invoice/:id?" element={<InvoiceEditor />} />
-            <Route path="/billing/client-subscriptions" element={<ClientSubscriptions />} />
-            <Route path="/billing/product-recommendations" element={<ProductRecommendations />} />
-            <Route path="/billing/discover-more" element={<DiscoverMore />} />
-            <Route path="/billing/firm-subscriptions" element={<FirmSubscriptions />} />
-            <Route path="/billing/billing-details" element={<BillingDetails />} />
-            <Route path="/billing/revenue-share" element={<RevenueShare />} />
-            <Route path="/client-invitations" element={<ClientInvitations />} />
             <Route path="/accept-client-invite" element={<AcceptClientInvite />} />
-            <Route path="/financial-dashboard" element={<FinancialDashboard />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/resources/getting-started" element={<GettingStartedGuide />} />
-            <Route path="/resources/invoices-guide" element={<InvoicesGuide />} />
-            <Route path="/resources/reconcile-accounts" element={<ReconcileAccountsGuide />} />
-            <Route path="/resources/expense-tracking" element={<ExpenseTrackingGuide />} />
-            <Route path="/resources/end-of-month-close" element={<EndOfMonthCloseGuide />} />
-            <Route path="/resources/expense-categories" element={<CommonExpenseCategories />} />
-            <Route path="/resources/tax-deductions" element={<TaxDeductionsCheatSheet />} />
-            <Route path="/resources/year-end-tax-prep" element={<YearEndTaxPrepGuide />} />
-            <Route path="/resources/business-structure" element={<BusinessStructureComparison />} />
-            <Route path="/resources/financial-statements" element={<FinancialStatementsGuide />} />
-            <Route path="/templates/invoice" element={<InvoiceTemplate />} />
-            <Route path="/templates/expense-report" element={<ExpenseReportTemplate />} />
-            <Route path="/templates/bookkeeping-checklists" element={<BookkeepingChecklists />} />
-            <Route path="/templates/cash-flow" element={<CashFlowTemplate />} />
-            <Route path="/templates/payroll-summary" element={<PayrollSummaryTemplate />} />
-            <Route path="/resources/dashboard-tour" element={<DashboardTourGuide />} />
-            <Route path="/resources/recurring-invoices" element={<RecurringInvoicesGuide />} />
-            <Route path="/resources/generating-reports" element={<GeneratingReportsGuide />} />
-            <Route path="/resources/faqs" element={<FAQs />} />
-            <Route path="/resources/troubleshooting" element={<TroubleshootingGuide />} />
-            <Route path="/resources/contact-support" element={<ContactSupport />} />
-            <Route path="/resources/live-webinars" element={<LiveWebinars />} />
-            <Route path="/calculators/tax-withholding" element={<TaxWithholdingCalculator />} />
-            <Route path="/calculators/profit" element={<ProfitCalculator />} />
-            <Route path="/calculators/break-even" element={<BreakEvenCalculator />} />
-            <Route path="/calculators/payroll-cost" element={<PayrollCostEstimator />} />
+
+            {/* ── Client-only routes ── */}
+            <Route element={<ClientRouteGuard requireClient />}>
+              <Route path="/client-portal" element={<ClientPortal />} />
+              <Route path="/client-invoices" element={<ClientInvoices />} />
+              <Route path="/client-documents" element={<ClientDocuments />} />
+              <Route path="/client-settings" element={<ClientSettings />} />
+              <Route path="/client-support" element={<ClientSupport />} />
+              <Route path="/client-onboarding" element={<ClientOnboarding />} />
+              <Route path="/client-ai" element={<ClientBookkeepingAI />} />
+            </Route>
+
+            {/* ── Admin-only routes ── */}
+            <Route element={<ClientRouteGuard requireAdmin />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/user-permissions" element={<UserPermissions />} />
+              <Route path="/bulk-client-upload" element={<BulkClientUpload />} />
+              <Route path="/bulk-client-numbers" element={<BulkClientNumbers />} />
+            </Route>
+
+            {/* ── Staff routes (user + admin, clients blocked) ── */}
+            <Route element={<ClientRouteGuard requireStaff />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/client/:id" element={<ClientDetails />} />
+              <Route path="/client-invitations" element={<ClientInvitations />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/bank-transactions" element={<BankTransactions />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/invoice-templates" element={<InvoiceTemplates />} />
+              <Route path="/invoice/:id?" element={<InvoiceEditor />} />
+              <Route path="/tax-returns" element={<TaxReturns />} />
+              <Route path="/tax-majr-ai" element={<TaxMajrAiLogin />} />
+              <Route path="/tax-majr-ai-dashboard" element={<TaxMajrAi />} />
+              <Route path="/bookkeeping" element={<BookkeepingDashboard />} />
+              <Route path="/payroll-setup" element={<PayrollSetup />} />
+              <Route path="/payroll-runs" element={<PayrollRuns />} />
+              <Route path="/payroll-dashboard" element={<PayrollDashboard />} />
+              <Route path="/payroll/:id" element={<Payroll />} />
+              <Route path="/timesheets" element={<Timesheets />} />
+              <Route path="/time-tracking-dashboard" element={<TimeTrackingDashboard />} />
+              <Route path="/time-tracking-analytics" element={<TimeTrackingAnalytics />} />
+              <Route path="/billable-forecast" element={<BillableHoursForecast />} />
+              <Route path="/pto-management" element={<PTOManagement />} />
+              <Route path="/1099-history" element={<Form1099History />} />
+              <Route path="/multi-entity" element={<MultiEntity />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/standard-reports" element={<StandardReports />} />
+              <Route path="/expense-tracking" element={<ExpenseTracking />} />
+              <Route path="/expenses" element={<Expenses />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/training" element={<Training />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/financial-planning" element={<FinancialPlanning />} />
+              <Route path="/workflow-automation" element={<WorkflowAutomation />} />
+              <Route path="/accounting" element={<Accounting />} />
+              <Route path="/journal-entries" element={<JournalEntries />} />
+              <Route path="/journal-entry-report" element={<JournalEntryReport />} />
+              <Route path="/profit-and-loss" element={<ProfitAndLoss />} />
+              <Route path="/balance-sheet" element={<BalanceSheet />} />
+              <Route path="/cash-flow" element={<CashFlow />} />
+              <Route path="/general-ledger" element={<GeneralLedger />} />
+              <Route path="/revenue-by-client" element={<RevenueByClient />} />
+              <Route path="/trial-balance" element={<TrialBalance />} />
+              <Route path="/bank-reconciliation" element={<BankReconciliation />} />
+              <Route path="/sales-tax-summary" element={<SalesTaxSummary />} />
+              <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
+              <Route path="/financial-dashboard" element={<FinancialDashboard />} />
+              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/billing/client-subscriptions" element={<ClientSubscriptions />} />
+              <Route path="/billing/product-recommendations" element={<ProductRecommendations />} />
+              <Route path="/billing/discover-more" element={<DiscoverMore />} />
+              <Route path="/billing/firm-subscriptions" element={<FirmSubscriptions />} />
+              <Route path="/billing/billing-details" element={<BillingDetails />} />
+              <Route path="/billing/revenue-share" element={<RevenueShare />} />
+              <Route path="/resources" element={<Resources />} />
+              <Route path="/resources/getting-started" element={<GettingStartedGuide />} />
+              <Route path="/resources/invoices-guide" element={<InvoicesGuide />} />
+              <Route path="/resources/reconcile-accounts" element={<ReconcileAccountsGuide />} />
+              <Route path="/resources/expense-tracking" element={<ExpenseTrackingGuide />} />
+              <Route path="/resources/end-of-month-close" element={<EndOfMonthCloseGuide />} />
+              <Route path="/resources/expense-categories" element={<CommonExpenseCategories />} />
+              <Route path="/resources/tax-deductions" element={<TaxDeductionsCheatSheet />} />
+              <Route path="/resources/year-end-tax-prep" element={<YearEndTaxPrepGuide />} />
+              <Route path="/resources/business-structure" element={<BusinessStructureComparison />} />
+              <Route path="/resources/financial-statements" element={<FinancialStatementsGuide />} />
+              <Route path="/templates/invoice" element={<InvoiceTemplate />} />
+              <Route path="/templates/expense-report" element={<ExpenseReportTemplate />} />
+              <Route path="/templates/bookkeeping-checklists" element={<BookkeepingChecklists />} />
+              <Route path="/templates/cash-flow" element={<CashFlowTemplate />} />
+              <Route path="/templates/payroll-summary" element={<PayrollSummaryTemplate />} />
+              <Route path="/resources/dashboard-tour" element={<DashboardTourGuide />} />
+              <Route path="/resources/recurring-invoices" element={<RecurringInvoicesGuide />} />
+              <Route path="/resources/generating-reports" element={<GeneratingReportsGuide />} />
+              <Route path="/resources/faqs" element={<FAQs />} />
+              <Route path="/resources/troubleshooting" element={<TroubleshootingGuide />} />
+              <Route path="/resources/contact-support" element={<ContactSupport />} />
+              <Route path="/resources/live-webinars" element={<LiveWebinars />} />
+              <Route path="/calculators/tax-withholding" element={<TaxWithholdingCalculator />} />
+              <Route path="/calculators/profit" element={<ProfitCalculator />} />
+              <Route path="/calculators/break-even" element={<BreakEvenCalculator />} />
+              <Route path="/calculators/payroll-cost" element={<PayrollCostEstimator />} />
+            </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import Layout from "@/components/Layout";
+import ClientLayout from "@/components/ClientLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,7 +124,7 @@ const ClientSupport = () => {
   };
 
   return (
-    <Layout>
+    <ClientLayout>
       <div className="w-full max-w-3xl space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -252,7 +252,7 @@ const ClientSupport = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </ClientLayout>
   );
 };
 

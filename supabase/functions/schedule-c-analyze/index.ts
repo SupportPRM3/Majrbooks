@@ -2,12 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const systemPrompt = `You are a U.S. tax preparation assistant specializing in Schedule C (Form 1040).
 
-You will receive bank statement transaction data (text, CSV, or images of PDF bank statements). Your job is to:
+You will receive bank statement transaction data (text, CSV, or a PDF bank statement). Your job is to:
 
 1. Extract every transaction you can find.
 2. Separate BUSINESS INCOME from EXPENSES.
@@ -49,7 +49,7 @@ You MUST respond with valid JSON using this exact structure (no markdown, no cod
       "description": "...",
       "amount": 0,
       "category": "...",
-      "type": "income" | "expense" | "personal" | "needs_review",
+      "type": "income",
       "notes": "..."
     }
   ],
@@ -65,7 +65,7 @@ You MUST respond with valid JSON using this exact structure (no markdown, no cod
     {
       "description": "...",
       "amount": 0,
-      "frequency": "monthly" | "annual",
+      "frequency": "monthly",
       "category": "..."
     }
   ]
@@ -75,90 +75,74 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
     const { transactions_text, client_name, pdf_files } = await req.json();
-    
+
     const hasPdfs = Array.isArray(pdf_files) && pdf_files.length > 0;
     const hasText = transactions_text && transactions_text.trim();
-    
+
     if (!hasText && !hasPdfs) throw new Error("No transaction data provided");
 
-    // Build user message content - multimodal if PDFs present
+    // Build message content for the Lovable/Gemini gateway
     const userContent: any[] = [];
 
-    // Add text instructions
     let textPart = client_name ? `Client: ${client_name}\n\n` : "";
-    
     if (hasText) {
       textPart += `Bank Statement Transactions:\n\n${transactions_text}`;
     }
-    
     if (hasPdfs) {
-      textPart += `\n\nI am also providing ${pdf_files.length} PDF bank statement(s) as images. Please extract ALL transactions from these documents and categorize them.`;
+      textPart += hasPdfs
+        ? `\n\nPlease extract ALL transactions from the attached PDF bank statement(s) and categorize them into Schedule C categories.`
+        : "";
     }
 
     userContent.push({ type: "text", text: textPart });
 
-    // Add PDF files as base64 images for vision processing
+    // Add PDFs as inline file data (Gemini via Lovable gateway format)
     if (hasPdfs) {
       for (const pdf of pdf_files) {
         userContent.push({
-          type: "image_url",
-          image_url: {
-            url: `data:application/pdf;base64,${pdf.base64}`,
+          type: "file",
+          file: {
+            filename: "bank_statement.pdf",
+            file_data: `data:application/pdf;base64,${pdf.base64}`,
           },
         });
       }
     }
 
-    // Use vision-capable model for PDFs
-    const model = hasPdfs ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash";
-
-    const messages: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
-
-    // If multimodal content, use content array format; otherwise plain string
-    if (hasPdfs) {
-      messages.push({ role: "user", content: userContent });
-    } else {
-      messages.push({ role: "user", content: textPart });
-    }
-
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages }),
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        max_tokens: 8192,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds to continue." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", status, t);
+      const text = await response.text();
+      console.error("Lovable AI gateway error:", status, text);
+      if (status === 429) throw new Error("Rate limit exceeded. Please try again in a moment.");
+      if (status === 402) throw new Error("AI credits depleted. Please add credits to your Lovable account.");
       throw new Error(`AI gateway error: ${status}`);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-
     if (!content) throw new Error("No response from AI");
 
-    // Parse JSON from the response, stripping markdown fences if present
+    // Strip markdown fences if present
     let cleaned = content.trim();
     if (cleaned.startsWith("```")) {
       cleaned = cleaned.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
@@ -171,8 +155,9 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("schedule-c-analyze error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

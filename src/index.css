@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 15%;
 
-    --primary: 158 100% 39%;
+    --primary: 130 50% 35%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 20% 94%;
@@ -29,7 +29,7 @@ All colors MUST be HSL.
     --accent: 210 20% 94%;
     --accent-foreground: 215 25% 15%;
 
-    --success: 158 100% 39%;
+    --success: 130 50% 35%;
     --success-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -37,18 +37,18 @@ All colors MUST be HSL.
 
     --border: 215 20% 88%;
     --input: 215 20% 88%;
-    --ring: 158 100% 39%;
+    --ring: 130 50% 35%;
 
     --radius: 0.75rem;
 
-    --chart-1: 158 100% 39%;
-    --chart-2: 186 85% 50%;
+    --chart-1: 130 50% 35%;
+    --chart-2: 87 48% 52%;
     --chart-3: 0 72% 51%;
-    --chart-4: 210 100% 50%;
+    --chart-4: 215 73% 35%;
     --chart-5: 280 70% 55%;
 
     --gradient-primary: linear-gradient(135deg, hsl(215 73% 15%), hsl(215 60% 20%));
-    --gradient-success: linear-gradient(135deg, hsl(158 100% 39%), hsl(160 100% 45%));
+    --gradient-success: linear-gradient(135deg, hsl(130 50% 35%), hsl(128 55% 42%));
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 98%));
 
     --shadow-soft: 0 4px 20px -2px hsl(0 0% 0% / 0.08);
@@ -58,12 +58,12 @@ All colors MUST be HSL.
 
     --sidebar-background: 215 73% 12%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 158 100% 39%;
+    --sidebar-primary: 130 50% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 215 60% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 215 40% 25%;
-    --sidebar-ring: 158 100% 39%;
+    --sidebar-ring: 130 50% 42%;
   }
 
   .dark {
@@ -76,7 +76,7 @@ All colors MUST be HSL.
     --popover: 214 70% 20%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 158 64% 52%;
+    --primary: 130 52% 48%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 100% 50%;
@@ -85,10 +85,10 @@ All colors MUST be HSL.
     --muted: 214 60% 25%;
     --muted-foreground: 210 20% 75%;
 
-    --accent: 186 85% 50%;
+    --accent: 87 48% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 158 64% 52%;
+    --success: 130 52% 48%;
     --success-foreground: 0 0% 100%;
 
     --destructive: 0 72% 55%;
@@ -96,29 +96,29 @@ All colors MUST be HSL.
 
     --border: 214 60% 28%;
     --input: 214 60% 25%;
-    --ring: 158 64% 52%;
+    --ring: 130 52% 48%;
 
-    --chart-1: 186 85% 50%;
-    --chart-2: 158 64% 52%;
+    --chart-1: 87 48% 52%;
+    --chart-2: 130 52% 48%;
     --chart-3: 0 72% 55%;
-    --chart-4: 210 100% 50%;
+    --chart-4: 215 73% 50%;
     --chart-5: 280 70% 55%;
 
     --gradient-primary: linear-gradient(135deg, hsl(214 85% 15%), hsl(214 85% 20%));
-    --gradient-success: linear-gradient(135deg, hsl(158 64% 52%), hsl(160 76% 50%));
+    --gradient-success: linear-gradient(135deg, hsl(130 52% 48%), hsl(128 55% 55%));
     --gradient-card: linear-gradient(180deg, hsl(214 70% 20%), hsl(214 70% 23%));
-    
+
     --shadow-soft: 0 4px 20px -2px hsl(0 0% 0% / 0.3);
     --shadow-card: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
 
     --sidebar-background: 214 85% 12%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 158 64% 52%;
+    --sidebar-primary: 130 52% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 214 70% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 214 60% 25%;
-    --sidebar-ring: 158 64% 52%;
+    --sidebar-ring: 130 52% 52%;
   }
 }
 
