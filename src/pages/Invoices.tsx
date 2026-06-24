@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
@@ -31,8 +32,18 @@ interface Invoice {
 const Invoices = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const statusFilter = new URLSearchParams(location.search).get("status") ?? "all";
+
+  const filteredInvoices = invoices.filter((inv) => {
+    if (statusFilter === "outstanding") return inv.status !== "paid";
+    if (statusFilter === "paid") return inv.status === "paid";
+    return true;
+  });
   const [open, setOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -294,12 +305,35 @@ const handleRecordPayment = (invoice: Invoice) => {
           </Dialog>
         </div>
 
+        {/* Filter tabs */}
+        <div className="flex gap-2">
+          {[
+            { label: "All", value: "all" },
+            { label: "Outstanding", value: "outstanding" },
+            { label: "Paid", value: "paid" },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => navigate(tab.value === "all" ? "/invoices" : `/invoices?status=${tab.value}`)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                statusFilter === tab.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>All Invoices</CardTitle>
+            <CardTitle>
+              {statusFilter === "outstanding" ? "Outstanding Invoices" : statusFilter === "paid" ? "Paid Invoices" : "All Invoices"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {invoices.length === 0 ? (
+            {filteredInvoices.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No invoices yet. Create your first invoice to get started!</p>
@@ -321,7 +355,7 @@ const handleRecordPayment = (invoice: Invoice) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((invoice) => {
+                    {filteredInvoices.map((invoice) => {
                       const amountPaid = invoice.amount_paid || 0;
                       const remaining = invoice.amount - amountPaid;
                       return (

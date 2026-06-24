@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MajrBooks — Launch Readiness Report</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; background: #f4f5f7; color: #1a1a2e; }
+  .page { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; }
+  .subtitle { color: #6b7280; margin-top: 4px; font-size: 13px; }
+  .score-banner { display: flex; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
+  .score-card { flex: 1; min-width: 140px; background: #fff; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; }
+  .score-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+  .score-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .score-card.red .value { color: #dc2626; }
+  .score-card.amber .value { color: #d97706; }
+  .score-card.green .value { color: #16a34a; }
+  .section { margin-top: 32px; }
+  .section-title { font-size: 15px; font-weight: 700; padding: 8px 14px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-title.critical { background: #fef2f2; color: #b91c1c; border-left: 4px solid #dc2626; }
+  .section-title.important { background: #fffbeb; color: #92400e; border-left: 4px solid #d97706; }
+  .section-title.nicetohave { background: #f0fdf4; color: #166534; border-left: 4px solid #16a34a; }
+  .section-title.env { background: #eff6ff; color: #1d4ed8; border-left: 4px solid #2563eb; }
+  .item { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .item-header { display: flex; align-items: flex-start; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .dot.red { background: #dc2626; }
+  .dot.amber { background: #d97706; }
+  .dot.green { background: #16a34a; }
+  .dot.blue { background: #2563eb; }
+  .item-title { font-weight: 600; font-size: 13.5px; flex: 1; }
+  .item-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; font-weight: 600; }
+  .badge-critical { background: #fef2f2; color: #b91c1c; }
+  .badge-important { background: #fffbeb; color: #92400e; }
+  .badge-nice { background: #f0fdf4; color: #166534; }
+  .item-body { margin-top: 8px; padding-left: 20px; }
+  .item-body p { color: #4b5563; font-size: 13px; margin-top: 4px; }
+  .item-body .fix { color: #1d4ed8; font-size: 12px; margin-top: 6px; padding: 6px 10px; background: #eff6ff; border-radius: 6px; }
+  .item-body .file { font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; color: #6b7280; background: #f9fafb; padding: 2px 6px; border-radius: 4px; }
+  .checklist { margin-top: 12px; }
+  .check-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+  .check-row.done { background: #f0fdf4; color: #166534; }
+  .check-row.pending { background: #fffbeb; color: #92400e; }
+  .check-row.notstarted { background: #fef2f2; color: #991b1b; }
+  .check-row .ck { font-size: 15px; flex-shrink: 0; }
+  .check-row .task { flex: 1; font-weight: 500; }
+  .check-row .pri { font-size: 11px; font-weight: 600; opacity: .7; }
+  .env-block { background: #1e293b; border-radius: 10px; padding: 16px 18px; margin-top: 10px; }
+  .env-block pre { color: #94a3b8; font-family: 'Menlo', monospace; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
+  .env-block .key { color: #7dd3fc; }
+  .env-block .comment { color: #475569; }
+  .env-block .ok { color: #86efac; }
+  .env-block .missing { color: #fca5a5; }
+  footer { margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>MajrBooks — Launch Readiness Report</h1>
+  <p class="subtitle">Generated June 22, 2026 · Full codebase audit · Supabase + Stripe + React</p>
+
+  <div class="score-banner">
+    <div class="score-card red">
+      <div class="label">Critical Blockers</div>
+      <div class="value">8</div>
+    </div>
+    <div class="score-card amber">
+      <div class="label">Important Fixes</div>
+      <div class="value">10</div>
+    </div>
+    <div class="score-card green">
+      <div class="label">Nice to Have</div>
+      <div class="value">5</div>
+    </div>
+    <div class="score-card red">
+      <div class="label">Launch Status</div>
+      <div class="value" style="font-size:16px; padding-top:6px;">NOT READY</div>
+    </div>
+  </div>
+
+  <!-- CRITICAL -->
+  <div class="section">
+    <div class="section-title critical">🚨 Critical Blockers — Must Fix Before Launch</div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">1. Missing Stripe Price IDs (Yearly + Enterprise)</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>4 yearly price IDs and the Enterprise monthly ID are fake placeholder strings. Any user who clicks "Yearly" or tries to buy Enterprise will get a Stripe error.</p>
+        <p class="file">src/lib/subscriptionTiers.ts — price_starter_yearly, price_pro_yearly, price_enterprise_yearly, price_enterprise</p>
+        <div class="fix">✏️ Fix: Go to Stripe Dashboard → Products → create yearly prices for Starter ($290/yr) and Pro ($370/yr), create Enterprise plan. Copy real price_1xxx IDs into subscriptionTiers.ts.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">2. No Stripe Webhook Handler</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>When a customer cancels, downgrades, or has a failed payment in Stripe, your app never finds out. Their subscription stays "active" until the next manual check-subscription call.</p>
+        <div class="fix">✏️ Fix: Create supabase/functions/stripe-webhook/index.ts that handles customer.subscription.deleted, invoice.payment_failed, and customer.subscription.updated events. Register the webhook URL in Stripe Dashboard.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">3. Missing API Keys in Supabase Edge Functions</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>Without these keys set in Supabase → Settings → Edge Functions → Secrets, every email, AI feature, and checkout will fail in production.</p>
+        <div class="fix">✏️ Fix: In Supabase Dashboard → Edge Functions → Secrets, add:<br>
+          STRIPE_SECRET_KEY = sk_live_...<br>
+          RESEND_API_KEY = re_...<br>
+          LOVABLE_API_KEY = (your key for AI analysis functions)
+        </div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">4. AI Document Analysis May Not Work (7 Edge Functions)</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>7 functions (analyze-receipt, analyze-bank-statement, analyze-tax-document, categorize-transaction, forecast-cashflow, schedule-c-analyze, tax-qa) call the Lovable AI gateway. These need a valid LOVABLE_API_KEY set in Supabase secrets.</p>
+        <div class="fix">✏️ Fix: Set LOVABLE_API_KEY in Supabase secrets. Test each function by uploading a real document and checking logs in Supabase Dashboard → Edge Functions → Logs.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">5. Email Domain Not Verified (All Emails Will Bounce)</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>Emails send from support@majrtaxsoftware.com and support@prm3tax.com. If neither domain has DKIM/SPF records configured in Resend, all invoices, invitations, and password resets bounce or go to spam.</p>
+        <div class="fix">✏️ Fix: Log in to Resend.com → Domains → Add your domain → Add the DNS records they provide → Verify. Then test sending a real invoice email end-to-end.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">6. Bank Linking Shows Fake Mock Accounts</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>BankLinkingFlow.tsx contains a hardcoded mockAccounts array with fake Checking/Savings/Credit Card accounts. Users "link" their bank and see fake data — this is a serious trust issue.</p>
+        <p class="file">src/components/BankLinkingFlow.tsx — mockAccounts array</p>
+        <div class="fix">✏️ Fix: Either integrate Plaid (plaid.com — industry standard bank API) or hide the Bank Linking feature entirely until it is real. Do not ship fake bank data.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">7. Supabase Database Migrations Need to Run on Production</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>65+ migration files exist locally but may not all be applied to the live Supabase project. Any missing table or column causes silent insert failures. RLS policies may not be enabled on all tables.</p>
+        <div class="fix">✏️ Fix: Run `supabase db push` or apply migrations via Supabase Dashboard → SQL Editor. Then test that clients, invoices, transactions, and employees tables all work with RLS enabled.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot red"></div>
+        <div class="item-title">8. Enterprise Price ID Is Placeholder (Blocks Enterprise Sales)</div>
+        <span class="item-badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="item-body">
+        <p>prod_enterprise and price_enterprise are fake. Any attempt to subscribe to Enterprise sends an invalid ID to Stripe and fails.</p>
+        <div class="fix">✏️ Fix: Create Enterprise product in Stripe → copy real price ID → update subscriptionTiers.ts.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORTANT -->
+  <div class="section">
+    <div class="section-title important">⚠️ Important — Fix Before Marketing Launch</div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">Yearly Billing Toggle Does Nothing (Placeholder IDs)</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>The monthly/yearly toggle in UpgradeModal shows discounted yearly prices but all yearly price IDs are placeholders. A warning banner was added (recent fix) but yearly billing is not actually functional.</p>
+        <div class="fix">✏️ Fix: Create yearly prices in Stripe, replace placeholder IDs. Depends on Critical #1.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">BillingDetails.tsx Has 100% Mock Data</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>The Billing Details page shows fake payment methods, fake billing address, and fake invoice history. Users visiting this page see data that isn't real.</p>
+        <div class="fix">✏️ Fix: Either connect to Stripe Customer Portal for real billing management (easier) or hide the page and redirect to the Stripe portal instead.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">Recurring Invoices / Tasks Not Scheduled</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>Edge functions generate-recurring-invoices and generate-recurring-tasks exist but are never triggered automatically. Recurring items only generate if called manually.</p>
+        <div class="fix">✏️ Fix: Set up a Supabase cron job (pg_cron) or GitHub Actions to call these functions daily.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">Client Portal Route Guard — Clients Can Access Admin Routes</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>ClientRouteGuard.tsx gives full access to all routes for trial/subscribed users regardless of role. A client user could navigate directly to /admin, /team, /payroll-runs if they know the URL.</p>
+        <div class="fix">✏️ Fix: Add role-based route guards — clients should only access /client-* routes. Admin routes should require isAdmin. User routes should require role=user or admin.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">"Coming Soon" Buttons Scattered Throughout UI</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>Multiple buttons and sections are disabled with "Coming Soon" labels: Change Password in ClientSettings, Download invoices in ClientInvoices, Yearly billing in UpgradeModal. Users see broken expectations.</p>
+        <div class="fix">✏️ Fix: Either implement these features or remove them entirely from the UI before launch.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">No Rate Limiting on Email Edge Functions</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>send-invoice, send-client-invitation, and other email functions have no per-user rate limits. A malicious or buggy user could spam thousands of emails and exhaust your Resend quota.</p>
+        <div class="fix">✏️ Fix: Add a check in each email function: verify user has not sent more than 20 emails in the past hour using a simple counter in Supabase.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">FirmSubscriptions Seat Management Is Frontend-Only</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>The "Manage Seats" dialog updates local React state only — the seat count is not saved to the database or Stripe. Every page refresh resets the count.</p>
+        <div class="fix">✏️ Fix: Either persist seat count to a Supabase table, or remove the Manage Seats button until it is implemented.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">setup-storage Edge Function Must Run Before First Upload</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>The bank-statements and client-documents storage buckets are created on-demand by setup-storage. If this function fails (missing env vars), uploads fail silently.</p>
+        <div class="fix">✏️ Fix: Manually create both buckets in Supabase Dashboard → Storage → New bucket (set to private). This removes the dependency on the edge function for bucket creation.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">Password Change Not Implemented in Client Settings</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>ClientSettings.tsx has a "Change Password" button that is permanently disabled with "Coming Soon". Clients have no way to change their password through the portal.</p>
+        <div class="fix">✏️ Fix: Use supabase.auth.updateUser({ password: newPassword }) — it is a one-liner. Or send a password reset email instead.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot amber"></div>
+        <div class="item-title">Invoice Download Button Disabled in Client Portal</div>
+        <span class="item-badge badge-important">IMPORTANT</span>
+      </div>
+      <div class="item-body">
+        <p>ClientInvoices.tsx has a Download button per invoice that is disabled and shows "Download coming soon". Clients cannot download their own invoices.</p>
+        <div class="fix">✏️ Fix: Use the existing jsPDF setup (BillingDetails already imports it) to generate a simple invoice PDF on click.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NICE TO HAVE -->
+  <div class="section">
+    <div class="section-title nicetohave">✅ Nice to Have — Post-Launch Improvements</div>
+
+    <div class="item">
+      <div class="item-header">
+        <div class="dot green"></div>
+        <div class="item-title">Add indexes on high-traffic tables (status, date, user_id)</div>
+      </div>
+      <div class="item-body"><p>BankTransactions (3128 lines), Invoices, and Expenses pages do full table scans. Add DB indexes.</p></div>
+    </div>
+    <div class="item">
+      <div class="item-header">
+        <div class="dot green"></div>
+        <div class="item-title">Batch CSV/PDF export for reports</div>
+      </div>
+      <div class="item-body"><p>Export buttons exist in most report pages but only export current view. Add full date-range batch export.</p></div>
+    </div>
+    <div class="item">
+      <div class="item-header">
+        <div class="dot green"></div>
+        <div class="item-title">Regenerate Supabase TypeScript types after any schema change</div>
+      </div>
+      <div class="item-body"><p>Run supabase gen types typescript --project-id nwagunmqojlcxgmgyfdo after each migration.</p></div>
+    </div>
+    <div class="item">
+      <div class="item-header">
+        <div class="dot green"></div>
+        <div class="item-title">Mobile optimization for large pages</div>
+      </div>
+      <div class="item-body"><p>BankTransactions and Invoices pages are heavy on mobile. Test on real devices.</p></div>
+    </div>
+    <div class="item">
+      <div class="item-header">
+        <div class="dot green"></div>
+        <div class="item-title">Trial-to-paid conversion urgency messaging</div>
+      </div>
+      <div class="item-body"><p>Trial expiry modal is generic. Add countdown + more urgent "X days left" messaging to increase conversion.</p></div>
+    </div>
+  </div>
+
+  <!-- ENV VARS -->
+  <div class="section">
+    <div class="section-title env">🔑 Required Environment Variables</div>
+    <p style="color:#4b5563; font-size:13px; margin-bottom:8px;">Set these in Supabase Dashboard → Project Settings → Edge Functions → Secrets</p>
+    <div class="env-block">
+      <pre><span class="comment"># ✅ Already in .env (frontend public vars)</span>
+<span class="ok">VITE_SUPABASE_URL</span>          = https://nwagunmqojlcxgmgyfdo.supabase.co
+<span class="ok">VITE_SUPABASE_PUBLISHABLE_KEY</span> = sb_publishable_o3cgGmldJk...
+
+<span class="comment"># ❌ Missing — set in Supabase Edge Functions Secrets</span>
+<span class="missing">STRIPE_SECRET_KEY</span>          = sk_live_...        ← Stripe Dashboard → API Keys
+<span class="missing">RESEND_API_KEY</span>             = re_...             ← resend.com → API Keys
+<span class="missing">LOVABLE_API_KEY</span>            = ...               ← Lovable platform → API Key
+
+<span class="comment"># ✅ Auto-injected by Supabase into all edge functions</span>
+<span class="ok">SUPABASE_URL</span>               (auto)
+<span class="ok">SUPABASE_ANON_KEY</span>          (auto)
+<span class="ok">SUPABASE_SERVICE_ROLE_KEY</span>  (auto)</pre>
+    </div>
+  </div>
+
+  <!-- DEPLOYMENT CHECKLIST -->
+  <div class="section">
+    <div class="section-title critical">📋 Deployment Checklist</div>
+    <div class="checklist">
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Create yearly + enterprise Stripe prices, update subscriptionTiers.ts</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Create Stripe webhook edge function + register URL in Stripe</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Add STRIPE_SECRET_KEY to Supabase Edge Function secrets</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Add RESEND_API_KEY to Supabase Edge Function secrets</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Add LOVABLE_API_KEY to Supabase Edge Function secrets</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Verify email domain in Resend (add DNS records for prm3tax.com)</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Replace mock bank accounts or hide Bank Linking feature</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Run supabase db push to apply all migrations to production</span><span class="pri">CRITICAL</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Manually create bank-statements + client-documents storage buckets in Supabase</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Implement role-based route guards (clients cannot access admin routes)</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Implement Change Password in ClientSettings</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Implement Invoice Download in ClientInvoices</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Replace BillingDetails mock data or redirect to Stripe portal</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Set up pg_cron for recurring invoices + recurring tasks</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Remove "Manage Seats" button or persist seat count to database</span><span class="pri">IMPORTANT</span></div>
+      <div class="check-row notstarted"><span class="ck">❌</span><span class="task">Test all user flows end-to-end on staging (signup → trial → upgrade → cancel)</span><span class="pri">CRITICAL</span></div>
+    </div>
+  </div>
+
+  <footer>MajrBooks Audit · June 22, 2026 · Codebase: React + TypeScript + Supabase + Stripe</footer>
+</div>
+</body>
+</html>

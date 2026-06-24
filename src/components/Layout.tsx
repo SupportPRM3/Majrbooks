@@ -13,17 +13,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  LayoutDashboard, 
-  Receipt, 
-  FileText, 
-  TrendingUp, 
-  LogOut, 
+  LayoutDashboard,
+  Receipt,
+  FileText,
+  TrendingUp,
+  LogOut,
   Users,
   UserPlus,
   Briefcase,
   UserCheck,
   ChevronRight,
-  ChevronLeft,
   BarChart3,
   Bookmark,
   Menu,
@@ -39,7 +38,6 @@ import {
   Plus,
   Building2,
   Settings,
-  Calculator,
   UsersRound,
   GripVertical,
   Edit2,
@@ -50,7 +48,6 @@ import {
   Calendar,
   BarChart3 as BarChartIcon,
   ShieldCheck,
-  Shield,
   Sparkles,
   PanelLeftClose,
   PanelLeft,
@@ -59,7 +56,6 @@ import {
   MessageCircle,
   GraduationCap,
   BookOpen,
-  ListChecks,
   Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -83,7 +79,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-
 interface LayoutProps {
   children: ReactNode;
 }
@@ -102,6 +97,23 @@ interface YourBooksItem {
   visible?: boolean;
   module?: string;
   subItems?: SubNavItem[];
+}
+
+interface NavItem {
+  id: string;
+  path: string;
+  label: string;
+  icon: any;
+  subItems?: SubNavItem[];
+  isExternal?: boolean;
+
+  module?: string;
+}
+
+interface NavSection {
+  id: string;
+  title: string;
+  items: NavItem[];
 }
 
 const SortableItem = ({
@@ -220,10 +232,9 @@ const Layout = ({ children }: LayoutProps) => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
-  const [billingOpen, setBillingOpen] = useState(false);
+  const [expandedNavItems, setExpandedNavItems] = useState<Record<string, boolean>>({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-
 
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed(prev => {
@@ -232,12 +243,17 @@ const Layout = ({ children }: LayoutProps) => {
       return newValue;
     });
   };
-  
+
+  const toggleNavItem = (id: string) => {
+    setExpandedNavItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const [profile, setProfile] = useState<{
     full_name: string | null;
     avatar_url: string | null;
   } | null>(null);
 
+  // ─── Your Books items (drag-and-drop bookmarks section) ───────────────────
   const defaultYourBooksItems: YourBooksItem[] = [
     { id: "client-overview", path: "/dashboard", label: "Client overview", icon: Users, hasChevron: false, module: "dashboard" },
     {
@@ -363,18 +379,11 @@ const Layout = ({ children }: LayoutProps) => {
     })
   );
 
-  // Redirect to auth if not subscribed - but wait for subscription check to complete first
   useEffect(() => {
-    // Don't redirect while still loading or if user has any form of access
     if (loading) return;
     if (!user) return;
-    
-    // If user has ANY form of access, don't redirect
     if (subscribed || isTrial || subscriptionTier !== null || isAdmin) return;
-    
-    // Give a delay for subscription check to complete before redirecting
     const timer = setTimeout(() => {
-      // Double check after timeout - subscription might have been set
       if (!subscribed && !isTrial && subscriptionTier === null && !isAdmin) {
         navigate("/auth");
       }
@@ -386,11 +395,10 @@ const Layout = ({ children }: LayoutProps) => {
     if (user) {
       loadProfile();
     }
-    
-    // Load saved order and visibility from localStorage
+
     const savedOrder = localStorage.getItem('yourBooksOrder');
     const savedVisibility = localStorage.getItem('yourBooksVisibility');
-    
+
     let visibilityMap: Record<string, boolean> = {};
     if (savedVisibility) {
       try {
@@ -399,7 +407,7 @@ const Layout = ({ children }: LayoutProps) => {
         console.error("Error loading saved visibility:", error);
       }
     }
-    
+
     if (savedOrder) {
       try {
         const orderIds = JSON.parse(savedOrder);
@@ -409,18 +417,16 @@ const Layout = ({ children }: LayoutProps) => {
             return item ? { ...item, visible: visibilityMap[id] !== false } : null;
           })
           .filter(Boolean) as YourBooksItem[];
-        
-        // Add any new items that weren't in the saved order
+
         const newItems = defaultYourBooksItems.filter(
           item => !orderIds.includes(item.id)
         ).map(item => ({ ...item, visible: visibilityMap[item.id] !== false }));
-        
+
         setYourBooksItems([...reorderedItems, ...newItems]);
       } catch (error) {
         console.error("Error loading saved order:", error);
       }
     } else {
-      // Just apply visibility if no saved order
       setYourBooksItems(defaultYourBooksItems.map(item => ({
         ...item,
         visible: visibilityMap[item.id] !== false
@@ -430,18 +436,12 @@ const Layout = ({ children }: LayoutProps) => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
       setYourBooksItems((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        
         const newItems = arrayMove(items, oldIndex, newIndex);
-        
-        // Save to localStorage
-        const orderIds = newItems.map(item => item.id);
-        localStorage.setItem('yourBooksOrder', JSON.stringify(orderIds));
-        
+        localStorage.setItem('yourBooksOrder', JSON.stringify(newItems.map(item => item.id)));
         return newItems;
       });
     }
@@ -452,14 +452,11 @@ const Layout = ({ children }: LayoutProps) => {
       const newItems = items.map(item =>
         item.id === id ? { ...item, visible: item.visible === false } : item
       );
-      
-      // Save visibility to localStorage
       const visibilityMap: Record<string, boolean> = {};
       newItems.forEach(item => {
         visibilityMap[item.id] = item.visible !== false;
       });
       localStorage.setItem('yourBooksVisibility', JSON.stringify(visibilityMap));
-      
       return newItems;
     });
   };
@@ -477,16 +474,12 @@ const Layout = ({ children }: LayoutProps) => {
         .select("full_name, avatar_url")
         .eq("id", user?.id)
         .single();
-
-      if (data) {
-        setProfile(data);
-      }
+      if (data) setProfile(data);
     } catch (error) {
       console.error("Error loading profile:", error);
     }
   };
 
-  // Map navigation items to subscription modules
   const moduleMapping: Record<string, string> = {
     "/dashboard": "dashboard",
     "/invoices": "invoices",
@@ -507,12 +500,12 @@ const Layout = ({ children }: LayoutProps) => {
 
   const canAccessPath = (path: string): boolean => {
     const module = moduleMapping[path];
-    if (!module) return true; // Allow paths not in mapping
+    if (!module) return true;
     return hasAccessToModule(subscriptionTier, module);
   };
 
-  // Client users see a restricted navigation - only their portal items
-  const clientPortalItems: Array<{ path: string; label: string; icon: any; hasSubmenu?: boolean; isExternal?: boolean }> = [
+  // ─── Client portal navigation ─────────────────────────────────────────────
+  const clientPortalItems: Array<{ path: string; label: string; icon: any }> = [
     { path: "/client-portal", label: "My Portal", icon: LayoutDashboard },
     { path: "/client-invoices", label: "My Invoices", icon: Receipt },
     { path: "/client-ai", label: "AI Assistant", icon: Bot },
@@ -521,173 +514,248 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/client-settings", label: "Settings", icon: Settings },
   ];
 
-  // Admin/User practice items - full navigation
-  const fullPracticeItems: Array<{ path: string; label: string; icon: any; hasSubmenu?: boolean; isExternal?: boolean }> = [
-    { path: "/dashboard", label: "Clients", icon: Users },
-    { path: "/dashboard", label: "Overview", icon: LayoutDashboard },
-    { path: "/bookkeeping", label: "Bookkeeping", icon: BookOpen },
-    { path: "/payroll-dashboard", label: "Payroll", icon: UsersRound },
-    { path: "/multi-entity", label: "Multi-entity", icon: Layers },
-    { path: "/client-invitations", label: "Client Invitations", icon: UserPlus },
-    { path: "/invoices", label: "Billing", icon: Receipt, hasSubmenu: true },
-    { path: "/tax-returns", label: "Tax Returns", icon: FileText },
-    { path: "https://taxmajr.ai/", label: "Tax Majr AI", icon: Sparkles, isExternal: true },
-    { path: "/workflow-automation", label: "Workflow Automation", icon: RefreshCw },
-    { path: "/transactions", label: "Work", icon: Briefcase },
-    { path: "/team", label: "Team", icon: UserCheck },
-    { path: "/user-permissions", label: "User Permissions", icon: ShieldCheck },
-    { path: "/client-support", label: "AI Support", icon: MessageCircle },
-    { path: "/training", label: "Training", icon: GraduationCap },
-    { path: "/settings", label: "Settings", icon: Settings },
-    ...(isAdmin ? [{ path: "/admin", label: "Admin Dashboard", icon: Shield }] : []),
+  // ─── Grouped practice navigation ──────────────────────────────────────────
+  const navSections: NavSection[] = [
+    {
+      id: "clients-section",
+      title: "Clients",
+      items: [
+        { id: "clients", path: "/dashboard", label: "Clients", icon: Users },
+        { id: "overview", path: "/dashboard", label: "Overview", icon: LayoutDashboard },
+        { id: "client-invitations", path: "/client-invitations", label: "Client Invitations", icon: UserPlus },
+        { id: "multi-entity", path: "/multi-entity", label: "Multi-entity", icon: Layers },
+      ],
+    },
+    {
+      id: "finance-section",
+      title: "Finance",
+      items: [
+        {
+          id: "bookkeeping-nav",
+          path: "/bookkeeping",
+          label: "Bookkeeping",
+          icon: BookOpen,
+          subItems: [
+            { path: "/bookkeeping", label: "Overview" },
+            { path: "/bank-transactions", label: "Bank Transactions" },
+            { path: "/bank-reconciliation", label: "Reconciliation" },
+            { path: "/journal-entries", label: "Journal Entries" },
+            { path: "/chart-of-accounts", label: "Chart of Accounts" },
+          ],
+        },
+        {
+          id: "payroll-nav",
+          path: "/payroll-dashboard",
+          label: "Payroll",
+          icon: UsersRound,
+          subItems: [
+            { path: "/payroll-setup", label: "Payroll Setup" },
+            { path: "/payroll-runs", label: "Payroll Runs" },
+            { path: "/timesheets", label: "Timesheets" },
+            { path: "/1099-history", label: "1099 History" },
+          ],
+        },
+        {
+          id: "billing-nav",
+          path: "/invoices",
+          label: "Billing",
+          icon: Receipt,
+          module: "invoices",
+          subItems: [
+            { path: "/billing/client-subscriptions", label: "Client subscriptions" },
+            { path: "/billing/product-recommendations", label: "Product recommendations" },
+            { path: "/billing/discover-more", label: "Discover more" },
+            { path: "/billing/firm-subscriptions", label: "Firm subscriptions" },
+            { path: "/billing/billing-details", label: "Billing details" },
+            { path: "/billing/revenue-share", label: "Revenue share" },
+          ],
+        },
+        {
+          id: "invoicing-nav",
+          path: "/invoices",
+          label: "Invoicing",
+          icon: FileText,
+          module: "invoices",
+          subItems: [
+            { path: "/invoice/new", label: "New invoice" },
+            { path: "/invoices?status=outstanding", label: "Outstanding" },
+            { path: "/invoices?status=paid", label: "Paid" },
+          ],
+        },
+        {
+          id: "expenses-nav",
+          path: "/expense-tracking",
+          label: "Expenses",
+          icon: CreditCard,
+          module: "expenses",
+          subItems: [
+            { path: "/expense-tracking", label: "Receipt capture" },
+            { path: "/expenses", label: "Expense reports" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "compliance-section",
+      title: "Compliance",
+      items: [
+        { id: "tax-returns-nav", path: "/tax-returns", label: "Tax Returns", icon: FileSpreadsheet, module: "tax-returns" },
+        { id: "tax-majr-ai-nav", path: "https://taxmajr.ai/", label: "Tax Majr AI", icon: Sparkles, isExternal: true },
+        {
+          id: "reports-nav",
+          path: "/reports",
+          label: "Reports",
+          icon: BarChart3,
+          module: "reports",
+          subItems: [
+            { path: "/profit-and-loss", label: "P&L" },
+            { path: "/balance-sheet", label: "Balance Sheet" },
+            { path: "/cash-flow", label: "Cash Flow" },
+          ],
+        },
+        { id: "deadlines-nav", path: "/deadlines", label: "Deadlines", icon: Calendar },
+      ],
+    },
+    {
+      id: "operations-section",
+      title: "Operations",
+      items: [
+        { id: "workflow-nav", path: "/workflow-automation", label: "Workflow Automation", icon: RefreshCw, module: "workflow-automation" },
+        { id: "work-nav", path: "/transactions", label: "Work", icon: Briefcase },
+        { id: "ai-support-nav", path: "/client-support", label: "AI Support", icon: MessageCircle },
+      ],
+    },
+    {
+      id: "admin-section",
+      title: "Admin",
+      items: [
+        { id: "team-nav", path: "/team", label: "Team", icon: UserCheck, module: "team" },
+        { id: "user-permissions-nav", path: "/user-permissions", label: "User Permissions", icon: ShieldCheck },
+        { id: "training-nav", path: "/training", label: "Training", icon: GraduationCap },
+        { id: "settings-nav", path: "/settings", label: "Settings", icon: Settings, module: "settings" },
+      ],
+    },
   ];
 
-  // Admins get ALL items - bypass subscription check
-  const practiceItems = isClient
-    ? clientPortalItems
-    : fullPracticeItems.filter(item => item.isExternal || isAdmin || canAccessPath(item.path));
+  const practiceNavSections = navSections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => {
 
-  const billingSubmenuItems = [
-    { label: "Client subscriptions", path: "/billing/client-subscriptions" },
-    { label: "Product recommendations", path: "/billing/product-recommendations" },
-    { label: "Discover more", path: "/billing/discover-more" },
-    { label: "Firm subscriptions", path: "/billing/firm-subscriptions" },
-    { label: "Billing details", path: "/billing/billing-details" },
-    { label: "Revenue share", path: "/billing/revenue-share" },
-  ];
-
-  const bookmarkItems = [
-    { path: "/dashboard", label: "Client overview", icon: Users },
-    { path: "/reports", label: "Dashboards", icon: LayoutDashboard, hasSubmenu: true },
-    { path: "/transactions", label: "Tasks", icon: Check },
-    { path: "/transactions", label: "Transactions", icon: CreditCard, hasSubmenu: true },
-    { path: "/invoices", label: "Sales", icon: DollarSign, hasSubmenu: true },
-    { path: "/expenses", label: "Expenses", icon: Receipt, hasSubmenu: true },
-    { path: "/reports", label: "Reports", icon: BarChart3, hasSubmenu: true },
-    { path: "/payroll-setup", label: "Payroll", icon: UsersRound, hasSubmenu: true },
-    { path: "/time-tracking-dashboard", label: "Time Dashboard", icon: Clock },
-    { path: "/time-tracking-analytics", label: "Time Analytics", icon: BarChartIcon },
-    { path: "/billable-forecast", label: "Billable Forecast", icon: TrendingUp },
-    { path: "/pto-management", label: "PTO", icon: Calendar },
-    { path: "/timesheets", label: "Time", icon: Clock, hasSubmenu: true },
-    { path: "/projects", label: "Projects", icon: Briefcase },
-    { path: "/financial-planning", label: "Financial planning", icon: TrendingUp, hasSubmenu: true },
-    { path: "/workflow-automation", label: "Workflow automation", icon: RefreshCw },
-    { path: "/tax-returns", label: "Taxes", icon: FileText, hasSubmenu: true },
-    { path: "/bank-transactions", label: "Lending & banking", icon: Wallet, hasSubmenu: true },
-    { path: "/invoices", label: "Commerce", icon: HardDrive, hasSubmenu: true },
-  ];
+        if (item.isExternal) return true;
+        return isAdmin || canAccessPath(item.path);
+      }),
+    }))
+    .filter(section => section.items.length > 0);
 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0",
-        "border-r border-white/10 text-white",
-        sidebarCollapsed ? "w-16" : "w-64",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )} style={{ backgroundColor: "hsl(215, 73%, 12%)" }}>
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0",
+          "border-r border-white/10 text-white flex flex-col",
+          sidebarCollapsed ? "w-[52px]" : "w-60",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ backgroundColor: "hsl(215, 73%, 12%)" }}
+      >
         <div className="flex flex-col h-full">
           {/* Logo & Collapse Toggle */}
-          <div className="py-4 px-2 border-b border-border/50 bg-sidebar-background flex items-center justify-between">
+          <div className="py-4 px-2 border-b border-white/10 flex items-center justify-between shrink-0">
             {!sidebarCollapsed && (
-              <Link to="/dashboard" className="flex items-center justify-center flex-1">
-                <img src={majrLogo} alt="MAJR Books" className="w-full max-w-[200px] h-auto object-contain" />
+              <Link to="/dashboard" className="flex items-center justify-center flex-1 min-w-0 pr-1">
+                <img src={majrLogo} alt="MAJR Books" className="w-full max-w-[160px] h-auto object-contain" />
               </Link>
             )}
             <Button
               variant="ghost"
               size="sm"
               onClick={toggleSidebarCollapse}
-              className={cn("h-8 w-8 p-0 hidden lg:flex", sidebarCollapsed && "mx-auto")}
+              className={cn(
+                "h-8 w-8 p-0 hidden lg:flex shrink-0 text-white/60 hover:text-white hover:bg-white/10",
+                sidebarCollapsed && "mx-auto"
+              )}
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              {sidebarCollapsed
+                ? <PanelLeft className="h-4 w-4" />
+                : <PanelLeftClose className="h-4 w-4" />}
             </Button>
           </div>
 
           {/* New Button */}
-          <div className={cn("p-2", sidebarCollapsed ? "px-2" : "px-4")}>
+          <div className={cn("shrink-0", sidebarCollapsed ? "p-1.5" : "px-3 py-2")}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className={cn(
-                  "justify-center bg-green-600 hover:bg-green-700 text-white",
-                  sidebarCollapsed ? "w-full h-10 p-0" : "w-full"
-                )} variant="default">
+                <Button
+                  className={cn(
+                    "justify-center bg-green-600 hover:bg-green-700 text-white w-full",
+                    sidebarCollapsed ? "h-9 p-0" : "h-9"
+                  )}
+                  variant="default"
+                >
                   {sidebarCollapsed ? (
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                   ) : (
-                    <>
-                      <span className="text-lg mr-2">+</span> New
-                    </>
+                    <><span className="text-base mr-1.5">+</span> New</>
                   )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-card border border-border z-50" align="start">
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/dashboard" className="flex items-center gap-2">
-                    <UserCircle className="h-4 w-4" />
-                    <span>Client</span>
+                    <UserCircle className="h-4 w-4" /><span>Client</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/invoices" className="flex items-center gap-2">
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Retainer</span>
+                    <RotateCcw className="h-4 w-4" /><span>Retainer</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/invoices" className="flex items-center gap-2">
-                    <Receipt className="h-4 w-4" />
-                    <span>Invoice</span>
+                    <Receipt className="h-4 w-4" /><span>Invoice</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/invoice-templates" className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    <span>Recurring Template</span>
+                    <RefreshCw className="h-4 w-4" /><span>Recurring Template</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/bank-transactions" className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    <span>Other Income</span>
+                    <DollarSign className="h-4 w-4" /><span>Other Income</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/expense-tracking" className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4" />
-                    <span>Expense</span>
+                    <Wallet className="h-4 w-4" /><span>Expense</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/invoices" className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    <span>Estimate</span>
+                    <FileSpreadsheet className="h-4 w-4" /><span>Estimate</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/invoices" className="flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4" />
-                    <span>Proposal</span>
+                    <Lightbulb className="h-4 w-4" /><span>Proposal</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/invoices" className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    <span>Credit</span>
+                    <CreditCard className="h-4 w-4" /><span>Credit</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/expense-tracking" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span>Bill</span>
+                    <FileText className="h-4 w-4" /><span>Bill</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
                   <Link to="/payroll-setup" className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    <span>Vendor</span>
+                    <Building2 className="h-4 w-4" /><span>Vendor</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -695,106 +763,208 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
 
           {/* Scrollable Navigation */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Your Practice Section */}
-            <div className={cn("py-2", sidebarCollapsed ? "px-2" : "px-4")}>
-              {!sidebarCollapsed && (
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase">Your Practice</h3>
-                </div>
-              )}
-              <nav className="space-y-1">
-                {practiceItems.map((item) => {
-                  const Icon = item.icon;
-                  const [itemPath, itemQuery] = item.path.split("?");
-                  const isActive = itemQuery
-                    ? location.pathname === itemPath && location.search === `?${itemQuery}`
-                    : item.path === "/dashboard"
-                      ? location.pathname === "/dashboard"
-                      : location.pathname === item.path;
-                  
-                  if (item.hasSubmenu) {
-                    return (
-                      <div key={item.path}>
-                        <div 
-                          onClick={() => !sidebarCollapsed && setBillingOpen(!billingOpen)}
-                          className={cn(
-                            "flex items-center rounded-md transition-colors cursor-pointer",
-                            sidebarCollapsed ? "justify-center p-2" : "justify-between px-3 py-2 text-sm",
-                            isActive ? "bg-secondary text-secondary-foreground" : "hover:bg-secondary/50"
-                          )}
-                          title={sidebarCollapsed ? item.label : undefined}
-                        >
-                          <div className={cn("flex items-center", sidebarCollapsed ? "" : "space-x-3")}>
-                            <Icon className="h-4 w-4" />
-                            {!sidebarCollapsed && <span>{item.label}</span>}
-                          </div>
-                          {!sidebarCollapsed && (
-                            <ChevronRight className={cn("h-4 w-4 transition-transform", billingOpen && "rotate-90")} />
-                          )}
-                        </div>
-                        {billingOpen && !sidebarCollapsed && (
-                          <div className="ml-4 mt-1 space-y-1">
-                            {billingSubmenuItems.map((subItem, index) => (
-                              <Link key={index} to={subItem.path}>
-                                <div
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+
+            {/* Practice: grouped sections */}
+            {!isClient && (
+              <div className={cn("py-2", sidebarCollapsed ? "px-1" : "px-2")}>
+                {practiceNavSections.map((section, sectionIdx) => (
+                  <div key={section.id} className={cn(sectionIdx > 0 && "mt-3")}>
+                    {/* Section header */}
+                    {!sidebarCollapsed ? (
+                      <div className="px-2 mb-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 select-none">
+                          {section.title}
+                        </span>
+                      </div>
+                    ) : sectionIdx > 0 ? (
+                      <div className="border-t border-white/10 mb-2 mx-1" />
+                    ) : null}
+
+                    <nav role="navigation" aria-label={section.title} className="space-y-0.5">
+                      {section.items.map((item) => {
+                        const Icon = item.icon;
+                        const hasSubItems = !!item.subItems?.length;
+                        const isExpanded = !!expandedNavItems[item.id];
+
+                        // Active if current path matches item path or any sub-item path
+                        const isItemActive = hasSubItems
+                          ? !!item.subItems?.some(sub => {
+                              const [subPath] = sub.path.split('?');
+                              return location.pathname === subPath;
+                            })
+                          : location.pathname === item.path;
+
+                        if (item.isExternal) {
+                          return (
+                            <a
+                              key={item.id}
+                              href={item.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={sidebarCollapsed ? item.label : undefined}
+                              className={cn(
+                                "flex items-center rounded-md transition-colors text-white/75 hover:text-white hover:bg-white/10",
+                                sidebarCollapsed
+                                  ? "justify-center p-2"
+                                  : "px-2 py-1.5 gap-3 text-sm"
+                              )}
+                            >
+                              <Icon className="h-4 w-4 shrink-0" />
+                              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                            </a>
+                          );
+                        }
+
+                        if (hasSubItems) {
+                          return (
+                            <div key={item.id}>
+                              {sidebarCollapsed ? (
+                                // Collapsed: icon links to primary path
+                                <Link
+                                  to={item.path}
+                                  title={item.label}
                                   className={cn(
-                                    "px-3 py-2 text-sm rounded-md hover:bg-secondary/50 transition-colors cursor-pointer",
-                                    location.pathname === subItem.path && "bg-secondary text-secondary-foreground"
+                                    "flex justify-center items-center p-2 rounded-md transition-colors",
+                                    isItemActive
+                                      ? "bg-white/15 text-white"
+                                      : "text-white/75 hover:text-white hover:bg-white/10"
                                   )}
                                 >
-                                  {subItem.label}
-                                </div>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-                  
-                  if (item.isExternal) {
+                                  <Icon className="h-4 w-4" />
+                                </Link>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleNavItem(item.id)}
+                                    aria-expanded={isExpanded}
+                                    aria-controls={`submenu-${item.id}`}
+                                    className={cn(
+                                      "w-full flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-colors",
+                                      isItemActive
+                                        ? "bg-white/15 text-white"
+                                        : "text-white/75 hover:text-white hover:bg-white/10"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <Icon className="h-4 w-4 shrink-0" />
+                                      <span className="truncate">{item.label}</span>
+                                    </div>
+                                    <ChevronRight
+                                      className={cn(
+                                        "h-3.5 w-3.5 text-white/40 transition-transform duration-200 shrink-0 ml-1",
+                                        isExpanded && "rotate-90"
+                                      )}
+                                    />
+                                  </button>
+
+                                  {/* Animated submenu using CSS grid trick */}
+                                  <div
+                                    id={`submenu-${item.id}`}
+                                    className={cn(
+                                      "grid transition-all duration-200 ease-in-out",
+                                      isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                                    )}
+                                  >
+                                    <div className="overflow-hidden">
+                                      <div className="ml-[22px] pl-3 border-l border-white/15 py-0.5 mt-0.5 space-y-0.5">
+                                        {item.subItems!.map((sub) => {
+                                          const [subPath, subQuery] = sub.path.split('?');
+                                          const isSubActive =
+                                            location.pathname === subPath &&
+                                            (!subQuery || location.search === `?${subQuery}`);
+                                          return (
+                                            <Link
+                                              key={sub.path}
+                                              to={sub.path}
+                                              className={cn(
+                                                "block px-2.5 py-1.5 text-xs rounded-md transition-colors",
+                                                isSubActive
+                                                  ? "bg-white/15 text-white font-medium"
+                                                  : "text-white/55 hover:text-white hover:bg-white/10"
+                                              )}
+                                            >
+                                              {sub.label}
+                                            </Link>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Plain nav item
+                        return (
+                          <Link
+                            key={item.id}
+                            to={item.path}
+                            title={sidebarCollapsed ? item.label : undefined}
+                            className={cn(
+                              "flex items-center rounded-md transition-colors",
+                              sidebarCollapsed
+                                ? "justify-center p-2"
+                                : "px-2 py-1.5 gap-3 text-sm",
+                              isItemActive
+                                ? "bg-white/15 text-white"
+                                : "text-white/75 hover:text-white hover:bg-white/10"
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Client portal navigation */}
+            {isClient && (
+              <div className={cn("py-2", sidebarCollapsed ? "px-1" : "px-2")}>
+                <nav role="navigation" aria-label="Client portal" className="space-y-0.5">
+                  {clientPortalItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.path;
                     return (
-                      <a key={item.path} href={item.path} target="_blank" rel="noopener noreferrer" title={sidebarCollapsed ? item.label : undefined}>
-                        <div className={cn(
-                          "flex items-center rounded-md transition-colors hover:bg-secondary/50",
-                          sidebarCollapsed ? "justify-center p-2" : "justify-between px-3 py-2 text-sm"
-                        )}>
-                          <div className={cn("flex items-center", sidebarCollapsed ? "" : "space-x-3")}>
-                            <Icon className="h-4 w-4" />
-                            {!sidebarCollapsed && <span>{item.label}</span>}
-                          </div>
-                        </div>
-                      </a>
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        title={sidebarCollapsed ? item.label : undefined}
+                        className={cn(
+                          "flex items-center rounded-md transition-colors",
+                          sidebarCollapsed
+                            ? "justify-center p-2"
+                            : "px-2 py-1.5 gap-3 text-sm",
+                          isActive
+                            ? "bg-white/15 text-white"
+                            : "text-white/75 hover:text-white hover:bg-white/10"
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </Link>
                     );
-                  }
-                  
-                  return (
-                    <Link key={item.path} to={item.path} title={sidebarCollapsed ? item.label : undefined}>
-                      <div className={cn(
-                        "flex items-center rounded-md transition-colors",
-                        sidebarCollapsed ? "justify-center p-2" : "justify-between px-3 py-2 text-sm",
-                        isActive ? "bg-secondary text-secondary-foreground" : "hover:bg-secondary/50"
-                      )}>
-                        <div className={cn("flex items-center", sidebarCollapsed ? "" : "space-x-3")}>
-                          <Icon className="h-4 w-4" />
-                          {!sidebarCollapsed && <span>{item.label}</span>}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
+                  })}
+                </nav>
+              </div>
+            )}
 
-
-            {/* Your Books Section - hidden when collapsed or for client users */}
+            {/* Your Books Section – drag-and-drop bookmarks, hidden when collapsed or client */}
             {!sidebarCollapsed && !isClient && (
-              <div className="px-4 py-2 mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Bookmark className="h-3 w-3 text-muted-foreground" />
-                    <h3 className="text-xs font-semibold text-foreground uppercase">Your Books</h3>
+              <div className="px-3 py-2 mt-2 border-t border-white/10">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Bookmark className="h-3 w-3 text-white/40" />
+                    <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider select-none">
+                      Your Books
+                    </h3>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
@@ -805,7 +975,7 @@ const Layout = ({ children }: LayoutProps) => {
                         localStorage.removeItem('yourBooksOrder');
                         localStorage.removeItem('yourBooksVisibility');
                       }}
-                      className="h-6 px-2"
+                      className="h-6 px-1.5 text-white/40 hover:text-white hover:bg-white/10"
                       title="Reset to default order"
                     >
                       <RotateCcw className="h-3 w-3" />
@@ -814,13 +984,9 @@ const Layout = ({ children }: LayoutProps) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsEditMode(!isEditMode)}
-                      className="h-6 px-2"
+                      className="h-6 px-1.5 text-white/40 hover:text-white hover:bg-white/10"
                     >
-                      {isEditMode ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Edit2 className="h-3 w-3" />
-                      )}
+                      {isEditMode ? <Check className="h-3 w-3" /> : <Edit2 className="h-3 w-3" />}
                     </Button>
                   </div>
                 </div>
@@ -834,13 +1000,10 @@ const Layout = ({ children }: LayoutProps) => {
                     strategy={verticalListSortingStrategy}
                     disabled={!isEditMode}
                   >
-                    <nav className="space-y-1">
+                    <nav className="space-y-0.5">
                       {yourBooksItems
                         .filter(item => {
-                          // Filter by subscription module access
-                          if (item.module && !hasAccessToModule(subscriptionTier, item.module)) {
-                            return false;
-                          }
+                          if (item.module && !hasAccessToModule(subscriptionTier, item.module)) return false;
                           return isEditMode || item.visible !== false;
                         })
                         .map((item) => {
@@ -868,7 +1031,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -911,13 +1074,11 @@ const Layout = ({ children }: LayoutProps) => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:bg-accent">
                     {profile?.avatar_url ? (
-                      <img 
-                        src={profile.avatar_url} 
-                        alt="Profile" 
+                      <img
+                        src={profile.avatar_url}
+                        alt="Profile"
                         className="h-8 w-8 rounded-full object-cover border-2 border-border"
-                        onError={(e) => {
-                          e.currentTarget.src = "https://via.placeholder.com/32";
-                        }}
+                        onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/32"; }}
                       />
                     ) : (
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center border-2 border-border">
@@ -937,20 +1098,18 @@ const Layout = ({ children }: LayoutProps) => {
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  className="w-56 bg-card border border-border z-[100]" 
+                <DropdownMenuContent
+                  className="w-56 bg-card border border-border z-[100]"
                   align="end"
                   sideOffset={8}
                 >
                   <div className="flex items-center gap-3 p-3 border-b border-border">
                     {profile?.avatar_url ? (
-                      <img 
-                        src={profile.avatar_url} 
-                        alt="Profile" 
+                      <img
+                        src={profile.avatar_url}
+                        alt="Profile"
                         className="h-10 w-10 rounded-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = "https://via.placeholder.com/40";
-                        }}
+                        onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/40"; }}
                       />
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -958,12 +1117,8 @@ const Layout = ({ children }: LayoutProps) => {
                       </div>
                     )}
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">
-                        {profile?.full_name || "User"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {user?.email}
-                      </span>
+                      <span className="text-sm font-medium">{profile?.full_name || "User"}</span>
+                      <span className="text-xs text-muted-foreground">{user?.email}</span>
                       <span className={cn(
                         "text-xs font-medium px-1.5 py-0.5 rounded mt-1 w-fit",
                         isAdmin ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
@@ -974,16 +1129,14 @@ const Layout = ({ children }: LayoutProps) => {
                   </div>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to="/settings" className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
+                      <Settings className="h-4 w-4" /><span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={signOut} 
+                  <DropdownMenuItem
+                    onClick={signOut}
                     className="cursor-pointer text-destructive focus:text-destructive"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    <span>Logout</span>
+                    <LogOut className="h-4 w-4 mr-2" /><span>Logout</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -991,7 +1144,7 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </header>
 
-        {/* Trial Banner - hidden for admins */}
+        {/* Trial Banner */}
         {!isAdmin && isTrial && trialDaysRemaining !== null && (
           <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20 px-6 py-3">
             <div className="flex items-center justify-between">
@@ -1001,9 +1154,9 @@ const Layout = ({ children }: LayoutProps) => {
                   <strong>{trialDaysRemaining} days</strong> remaining in your free trial
                 </span>
               </div>
-              <Button 
-                size="sm" 
-                variant="default" 
+              <Button
+                size="sm"
+                variant="default"
                 className="gap-1"
                 onClick={() => setUpgradeModalOpen(true)}
               >
@@ -1014,17 +1167,14 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         )}
 
-        {/* Upgrade Modal */}
         <UpgradeModal open={upgradeModalOpen} onOpenChange={setUpgradeModalOpen} />
 
-        {/* Main Content Area */}
         <main className="flex-1 p-6 bg-background">{children}</main>
       </div>
 
-      {/* Trial Expiry Modal - shows during trial when <= 3 days remaining */}
       {isTrial && !isAdmin && !isClient && trialDaysRemaining !== null && trialDaysRemaining <= 3 && (
-        <TrialExpiryModal 
-          daysRemaining={trialDaysRemaining} 
+        <TrialExpiryModal
+          daysRemaining={trialDaysRemaining}
           isTrialExpired={trialDaysRemaining <= 0}
           userEmail={user?.email}
         />

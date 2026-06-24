@@ -8,7 +8,30 @@
       "PowerShell($nodePath = Get-ChildItem \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; if \\($nodePath\\) { $nodePath.FullName } else { \"not found in Program Files\" }; $nodePath2 = Get-ChildItem \"C:\\\\Program Files \\(x86\\)\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; if \\($nodePath2\\) { $nodePath2.FullName } else { \"not found in Program Files \\(x86\\)\" })",
       "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\work-pc\\\\Desktop\\\\Majr books\"; & \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\" install)",
       "mcp__Claude_in_Chrome__list_connected_browsers",
-      "mcp__Claude_in_Chrome__tabs_context_mcp"
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\" run dev)",
+      "Bash(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "Bash(Stop-Process -Force)",
+      "Bash(Write-Host \"Killed node processes\")",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(npx vite *)",
+      "Bash(npx supabase *)",
+      "Bash(powershell -Command \"\\(Get-Content 'src/pages/ClientInvoices.tsx'\\) -replace '<Layout>', '<ClientLayout>' -replace '</Layout>', '</ClientLayout>' | Set-Content 'src/pages/ClientInvoices.tsx'; \\(Get-Content 'src/pages/ClientSettings.tsx'\\) -replace '<Layout>', '<ClientLayout>' -replace '</Layout>', '</ClientLayout>' | Set-Content 'src/pages/ClientSettings.tsx'; \\(Get-Content 'src/pages/ClientSupport.tsx'\\) -replace '<Layout>', '<ClientLayout>' -replace '</Layout>', '</ClientLayout>' | Set-Content 'src/pages/ClientSupport.tsx'\")",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(xargs wc -l)",
+      "Bash(node -e \"require\\('./node_modules/jspdf/dist/jspdf.umd.min.js'\\); console.log\\('jspdf ok'\\)\")",
+      "Bash(git push *)",
+      "WebFetch(domain:pocket-fin-auto.lovable.app)",
+      "WebFetch(domain:majrbooks.com)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__navigate",
+      "Bash(git rm *)"
     ]
   }
 }

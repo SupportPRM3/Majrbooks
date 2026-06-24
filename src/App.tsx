@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import Deadlines from "./pages/Deadlines";
 import DashboardTourGuide from "./pages/guides/DashboardTourGuide";
 import RecurringInvoicesGuide from "./pages/guides/RecurringInvoicesGuide";
 import GeneratingReportsGuide from "./pages/guides/GeneratingReportsGuide";
@@ -162,6 +163,7 @@ const App = () => (
               <Route path="/1099-history" element={<Form1099History />} />
               <Route path="/multi-entity" element={<MultiEntity />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/deadlines" element={<Deadlines />} />
               <Route path="/standard-reports" element={<StandardReports />} />
               <Route path="/expense-tracking" element={<ExpenseTracking />} />
               <Route path="/expenses" element={<Expenses />} />
