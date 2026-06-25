@@ -47,8 +47,8 @@ serve(async (req) => {
 
     console.log(`Sending invitation to ${clientEmail} from ${senderName}`);
 
-    // Always use the published app URL for email links & assets.
-    const appBaseUrl = "https://majrbooks.com";
+    // Use env var if set, otherwise fall back to majrbooks.com
+    const appBaseUrl = Deno.env.get("APP_URL") || "https://majrbooks.com";
 
     // Use token-based URL if token provided, otherwise fall back to firm-based
     const inviteUrl = inviteToken
