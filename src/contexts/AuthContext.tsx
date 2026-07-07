@@ -18,13 +18,16 @@ interface AuthContextType {
   trialDaysRemaining: number | null;
   canCancel: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string, businessName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, businessName: string) => Promise<{ error: any; needsEmailConfirmation: boolean; alreadyRegistered: boolean }>;
   signOut: () => Promise<void>;
+  isPasswordRecovery: boolean;
+  updatePassword: (newPassword: string) => Promise<{ error: any }>;
   checkSubscription: () => Promise<void>;
   openCustomerPortal: () => Promise<void>;
   loading: boolean;
   isAdmin: boolean;
   isClient: boolean;
+  isStaff: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,6 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
   const [canCancel, setCanCancel] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const navigate = useNavigate();
 
   const fetchUserRole = async (userId: string) => {
@@ -163,10 +167,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
+
         if (session?.user) {
           setTimeout(() => {
             fetchUserRole(session.user.id);
@@ -239,15 +247,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
       },
     });
-    
-    if (!error && data.user) {
+
+    if (error) {
+      return { error, needsEmailConfirmation: false, alreadyRegistered: false };
+    }
+
+    // Supabase returns a 200 with an obfuscated user (empty identities) instead of an
+    // error when the email is already registered, to avoid leaking which emails exist.
+    const alreadyRegistered = !!data.user && (data.user.identities?.length ?? 0) === 0;
+    if (alreadyRegistered) {
+      return { error: null, needsEmailConfirmation: false, alreadyRegistered: true };
+    }
+
+    if (data.user) {
       // Start free trial for new users
       await startFreeTrial(data.user.id);
-      
+
       // Send signup notification
       sendLoginNotification(email, fullName, 'signup');
     }
-    
+
+    // If email confirmation is required, signUp succeeds but returns no session —
+    // the caller needs to know so it doesn't treat this as an authenticated signup.
+    return { error: null, needsEmailConfirmation: !data.session, alreadyRegistered: false };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (!error) {
+      setIsPasswordRecovery(false);
+    }
     return { error };
   };
 
@@ -276,14 +305,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isStripeTrial,
       trialDaysRemaining,
       canCancel,
-      signIn, 
-      signUp, 
+      signIn,
+      signUp,
       signOut,
+      isPasswordRecovery,
+      updatePassword,
       checkSubscription,
       openCustomerPortal,
       loading,
       isAdmin: role === 'admin',
-      isClient: role === 'client'
+      isClient: role === 'client',
+      isStaff: role === 'user'
     }}>
       {children}
     </AuthContext.Provider>

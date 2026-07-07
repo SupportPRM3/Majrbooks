@@ -19,7 +19,10 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const { signIn, signUp, user, subscribed, isTrial, trialDaysRemaining, checkSubscription, isAdmin, isClient } = useAuth();
+  const {
+    signIn, signUp, user, subscribed, isTrial, trialDaysRemaining, checkSubscription, isAdmin, isClient, isStaff,
+    isPasswordRecovery, updatePassword,
+  } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -28,6 +31,13 @@ const Auth = () => {
   const [signupData, setSignupData] = useState({ email: "", password: "", fullName: "", businessName: "" });
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [resendingConfirmation, setResendingConfirmation] = useState(false);
+
+  // Set via the `?reset=true` link Supabase sends, until the PASSWORD_RECOVERY auth
+  // event fires (which can lag a tick behind the redirect landing).
+  const showResetPasswordForm = isPasswordRecovery || searchParams.get("reset") === "true";
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   // Check for checkout status or plan selection flag in URL
   useEffect(() => {
@@ -58,16 +68,16 @@ const Auth = () => {
 
   // Redirect authenticated users to the right place
   useEffect(() => {
-    if (!user) return;
+    if (!user || showResetPasswordForm) return;
     // Clients go straight to their portal — no subscription needed
     if (isClient) {
       navigate("/client-portal");
       return;
     }
-    if ((subscribed || isTrial || isAdmin) && !showPlanSelection) {
+    if ((subscribed || isTrial || isAdmin || isStaff) && !showPlanSelection) {
       navigate("/dashboard");
     }
-  }, [user, subscribed, isTrial, isAdmin, isClient, navigate, showPlanSelection]);
+  }, [user, subscribed, isTrial, isAdmin, isClient, isStaff, navigate, showPlanSelection, showResetPasswordForm]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +127,9 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signUp(signupData.email, signupData.password, signupData.fullName, signupData.businessName);
+    const { error, needsEmailConfirmation, alreadyRegistered } = await signUp(
+      signupData.email, signupData.password, signupData.fullName, signupData.businessName
+    );
 
     if (error) {
       toast({
@@ -125,6 +137,24 @@ const Auth = () => {
         title: "Signup failed",
         description: error.message,
       });
+      setLoading(false);
+      return;
+    }
+
+    if (alreadyRegistered) {
+      toast({
+        variant: "destructive",
+        title: "Account already exists",
+        description: "That email is already registered. Try logging in or resetting your password instead.",
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (needsEmailConfirmation) {
+      // No session yet — signUp succeeded but the account isn't usable until they
+      // click the confirmation link, so show that instead of bouncing to /dashboard.
+      setUnconfirmedEmail(signupData.email);
       setLoading(false);
       return;
     }
@@ -192,6 +222,52 @@ const Auth = () => {
     setForgotPasswordEmail("");
   };
 
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPassword.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
+      });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast({
+        variant: "destructive",
+        title: "Passwords don't match",
+        description: "Make sure both passwords match.",
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await updatePassword(newPassword);
+    setLoading(false);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to update password",
+        description: error.message || "The reset link may have expired. Please request a new one.",
+      });
+      return;
+    }
+
+    setPasswordUpdated(true);
+    toast({
+      title: "Password updated!",
+      description: "You're all set — redirecting you now.",
+    });
+  };
+
+  useEffect(() => {
+    if (!passwordUpdated) return;
+    const timer = setTimeout(() => navigate("/dashboard"), 1500);
+    return () => clearTimeout(timer);
+  }, [passwordUpdated, navigate]);
+
   const activateTrial = async (loadingKey: string) => {
     if (!user) return;
     setCheckoutLoading(loadingKey);
@@ -237,6 +313,78 @@ const Auth = () => {
     if (tier === 'trial') return;
     await activateTrial('trial');
   };
+
+  // Set new password after clicking the email reset link — must be checked before
+  // any of the user-based redirects below, since the recovery link itself signs
+  // the user into a temporary session.
+  if (showResetPasswordForm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <Card className="w-full max-w-md shadow-xl border-primary/10">
+          <CardHeader className="space-y-3 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Link to="/" className="cursor-pointer">
+                <img
+                  src={logoImage}
+                  alt="MAJR Books Logo"
+                  className="h-20 w-auto object-contain hover:opacity-80 transition-opacity"
+                />
+              </Link>
+            </div>
+            <CardTitle className="text-2xl">Set New Password</CardTitle>
+            <CardDescription className="text-base">
+              {passwordUpdated
+                ? "Your password has been updated"
+                : "Choose a new password for your account"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {passwordUpdated ? (
+              <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <Check className="h-8 w-8 text-green-600" />
+                </div>
+                <p className="text-center text-muted-foreground">Redirecting you to your dashboard…</p>
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <form onSubmit={handleSetNewPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    minLength={6}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                  <Input
+                    id="confirm-new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    minLength={6}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Update Password
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Show plan selection after signup - Free trial option + paid plans
   if (showPlanSelection && user) {
@@ -351,7 +499,7 @@ const Auth = () => {
   }
 
   // Show plan selection only if trial is genuinely expired and no paid subscription
-  if (user && !subscribed && !isTrial && !isAdmin && !isClient) {
+  if (user && !subscribed && !isTrial && !isAdmin && !isClient && !isStaff) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
         <div className="w-full max-w-4xl">
