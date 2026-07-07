@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getScopeOwnerId } from "@/lib/scopeOwner";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,20 +34,20 @@ interface CombinedClient {
 }
 
 const Dashboard = () => {
-  const { user, loading: authLoading, isTrial, trialDaysRemaining, subscribed, checkSubscription, isAdmin, isStaff } = useAuth();
+  const { user, loading: authLoading, isTrial, trialDaysRemaining, subscribed, checkSubscription } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const VALID_TABS = ["overview", "bookkeeping", "payroll", "multi-entity"];
+  const VALID_TABS = ["dashboard", "bookkeeping", "payroll", "multi-entity"];
   const [activeTab, setActiveTab] = useState(() => {
     const t = searchParams.get("tab");
-    return VALID_TABS.includes(t ?? "") ? t! : "overview";
+    return VALID_TABS.includes(t ?? "") ? t! : "dashboard";
   });
 
   // Keep tab in sync when sidebar links change the URL
   useEffect(() => {
     const t = searchParams.get("tab");
-    const resolved = VALID_TABS.includes(t ?? "") ? t! : "overview";
+    const resolved = VALID_TABS.includes(t ?? "") ? t! : "dashboard";
     setActiveTab(resolved);
   }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,34 +64,16 @@ const Dashboard = () => {
   const loadStats = async () => {
     if (!user) return;
     try {
-      const [clientsRes, returnsRes, pendingReviewsRes, invoicesRes, subsRes, documentsRes, invitedRes, inactiveRes, archivedRes] = await Promise.all([
-        isStaff
-          ? supabase.from("clients").select("id", { count: "exact" }).eq("status", "active")
-          : supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "active"),
-        isStaff
-          ? supabase.from("tax_returns").select("id", { count: "exact" }).neq("status", "filed")
-          : supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", user.id).neq("status", "filed"),
-        isStaff
-          ? supabase.from("tax_returns").select("id", { count: "exact" }).eq("review_status", "pending_review")
-          : supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", user.id).eq("review_status", "pending_review"),
-        isStaff
-          ? supabase.from("invoices").select("amount, created_at").eq("status", "paid")
-          : supabase.from("invoices").select("amount, created_at").eq("user_id", user.id).eq("status", "paid"),
-        isStaff
-          ? supabase.from("recurring_invoices").select("id", { count: "exact" }).eq("status", "active")
-          : supabase.from("recurring_invoices").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "active"),
-        isStaff
-          ? supabase.from("documents").select("id", { count: "exact" }).eq("status", "pending")
-          : supabase.from("documents").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "pending"),
-        isStaff
-          ? supabase.from("client_invitations").select("id", { count: "exact" }).in("status", ["pending", "sent"])
-          : supabase.from("client_invitations").select("id", { count: "exact" }).eq("user_id", user.id).in("status", ["pending", "sent"]),
-        isStaff
-          ? supabase.from("clients").select("id", { count: "exact" }).eq("status", "inactive")
-          : supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "inactive"),
-        isStaff
-          ? supabase.from("clients").select("id", { count: "exact" }).eq("status", "archived")
-          : supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "archived"),
+      const ownerId = await getScopeOwnerId(user.id);
+      const [clientsRes, returnsRes, pendingReviewsRes, invoicesRes, subsRes, invitedRes, inactiveRes, archivedRes] = await Promise.all([
+        supabase.from("clients").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "active"),
+        supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", ownerId).neq("status", "filed"),
+        supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", ownerId).eq("review_status", "pending_review"),
+        supabase.from("invoices").select("amount, created_at").eq("user_id", ownerId).eq("status", "paid"),
+        supabase.from("recurring_invoices").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "active"),
+        supabase.from("client_invitations").select("id", { count: "exact" }).eq("user_id", ownerId).in("status", ["pending", "sent"]),
+        supabase.from("clients").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "inactive"),
+        supabase.from("clients").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "archived"),
       ]);
 
       // Build trailing 12-month revenue buckets from real paid invoices
@@ -123,7 +106,7 @@ const Dashboard = () => {
         activeReturns: returnsRes.count || 0,
         pendingReviews: pendingReviewsRes.count || 0,
         monthlyRevenue: currentMonthRevenue,
-        pendingDocs: documentsRes.count || 0,
+        pendingDocs: 0, // no document-tracking table exists yet
         activeSubscriptions: subsRes.count || 0,
       });
     } catch {}
@@ -131,18 +114,17 @@ const Dashboard = () => {
 
   const loadClients = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
-      // Load actual clients — staff sees all, admin sees own
+      const ownerId = await getScopeOwnerId(user.id);
+
+      // Load actual clients, scoped to this firm (owner or the team they belong to)
       let clientQuery = supabase
         .from("clients")
         .select("*")
+        .eq("user_id", ownerId)
         .order("created_at", { ascending: false });
-
-      if (!isStaff) {
-        clientQuery = clientQuery.eq("user_id", user.id);
-      }
 
       if (searchQuery.trim()) {
         clientQuery = clientQuery.or(`client_name.ilike.%${searchQuery}%,contact_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
@@ -156,12 +138,9 @@ const Dashboard = () => {
       let invitationQuery = supabase
         .from("client_invitations")
         .select("*")
+        .eq("user_id", ownerId)
         .in("status", ["pending", "sent"])
         .order("sent_at", { ascending: false });
-
-      if (!isStaff) {
-        invitationQuery = invitationQuery.eq("user_id", user.id);
-      }
 
       if (searchQuery.trim()) {
         invitationQuery = invitationQuery.or(`client_name.ilike.%${searchQuery}%,client_email.ilike.%${searchQuery}%`);
@@ -462,17 +441,17 @@ const Dashboard = () => {
           {/* Secondary Tabs */}
           <Tabs value={activeTab} onValueChange={(value) => {
             setActiveTab(value);
-            setSearchParams(value === "overview" ? {} : { tab: value });
+            setSearchParams(value === "dashboard" ? {} : { tab: value });
           }} className="w-full">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="bookkeeping">Bookkeeping</TabsTrigger>
               <TabsTrigger value="payroll">Payroll</TabsTrigger>
               <TabsTrigger value="multi-entity">Multi-entity</TabsTrigger>
             </TabsList>
 
-            {/* ── OVERVIEW TAB ── */}
-            <TabsContent value="overview" className="mt-6">
+            {/* ── DASHBOARD TAB ── */}
+            <TabsContent value="dashboard" className="mt-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-4">
                   <div className="flex flex-col">

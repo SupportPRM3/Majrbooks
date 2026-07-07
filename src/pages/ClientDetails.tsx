@@ -2,28 +2,32 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getScopeOwnerId } from "@/lib/scopeOwner";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Mail, Phone, Building, MapPin, User, FileText, Calendar, Download, FileSpreadsheet, DollarSign, Plus, Upload, Trash2, File, FileImage, Loader2, FolderOpen } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building, MapPin, User, FileText, Calendar, Download, FileSpreadsheet, DollarSign, Plus, Upload, Trash2, File, FileImage, Loader2, FolderOpen, Folder, FolderPlus, ChevronRight, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { CreateInvoiceDialog } from "@/components/CreateInvoiceDialog";
 import { EditInvoiceDialog } from "@/components/EditInvoiceDialog";
 import { RecurringInvoiceDialog } from "@/components/RecurringInvoiceDialog";
+import { EditClientDialog } from "@/components/EditClientDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { exportInvoicesToExcel } from "@/lib/invoiceExport";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClientDocument {
   name: string;
-  id: string;
+  id: string | null;
   updated_at: string;
   created_at: string;
   last_accessed_at: string;
@@ -65,10 +69,16 @@ const ClientDetails = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [recurringInvoiceOpen, setRecurringInvoiceOpen] = useState(false);
+  const [editClientOpen, setEditClientOpen] = useState(false);
   const [documents, setDocuments] = useState<ClientDocument[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState<string[]>([]);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,20 +87,28 @@ const ClientDetails = () => {
       return;
     }
     loadClientData();
-    loadDocuments();
+    setCurrentPath([]);
   }, [user, id]);
+
+  useEffect(() => {
+    if (!user || !id || !ownerId) return;
+    loadDocuments();
+  }, [user, id, ownerId, currentPath]);
 
   const loadClientData = async () => {
     if (!user || !id) return;
 
     setLoading(true);
     try {
-      // Load client details
+      const resolvedOwnerId = await getScopeOwnerId(user.id);
+      setOwnerId(resolvedOwnerId);
+
+      // Load client details, scoped to this firm (owner or the team they belong to)
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
+        .eq("user_id", resolvedOwnerId)
         .single();
 
       if (clientError) throw clientError;
@@ -101,7 +119,7 @@ const ClientDetails = () => {
         .from("invoices")
         .select("*")
         .eq("client_name", clientData.client_name)
-        .eq("user_id", user.id)
+        .eq("user_id", resolvedOwnerId)
         .order("issue_date", { ascending: false });
 
       if (invoicesError) throw invoicesError;
@@ -113,14 +131,23 @@ const ClientDetails = () => {
     }
   };
 
-  const loadDocuments = async () => {
-    if (!user || !id) return;
+  const isFolder = (doc: ClientDocument) => doc.id === null;
+
+  const loadDocuments = async (path: string[] = currentPath) => {
+    if (!user || !id || !ownerId) return;
     setDocsLoading(true);
     try {
-      const { data, error } = await supabase.storage
-        .from("client-documents")
-        .list(`${user.id}/${id}`, { sortBy: { column: "created_at", order: "desc" } });
-      if (!error) setDocuments((data as ClientDocument[]) || []);
+      const fullPath = [ownerId, id, ...path].join("/");
+      const { data, error } = await supabase.storage.from("client-documents").list(fullPath);
+      if (!error) {
+        const filtered = ((data as ClientDocument[]) || []).filter((d) => d.name !== ".keep");
+        filtered.sort((a, b) => {
+          if (isFolder(a) !== isFolder(b)) return isFolder(a) ? -1 : 1;
+          if (isFolder(a)) return a.name.localeCompare(b.name);
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        setDocuments(filtered);
+      }
     } catch {
       // bucket may not exist yet — silently ignore
     } finally {
@@ -128,12 +155,60 @@ const ClientDetails = () => {
     }
   };
 
+  const openFolder = (name: string) => setCurrentPath((prev) => [...prev, name]);
+
+  const goToBreadcrumb = (index: number) => setCurrentPath((prev) => prev.slice(0, index));
+
+  const handleCreateFolder = async () => {
+    if (!user || !id || !ownerId) return;
+    const name = newFolderName.trim();
+    if (!name) return;
+    if (documents.some((d) => isFolder(d) && d.name.toLowerCase() === name.toLowerCase())) {
+      toast({ title: "Folder already exists", variant: "destructive" });
+      return;
+    }
+    setCreatingFolder(true);
+    try {
+      const safeName = name.replace(/[\/\\]/g, "-").replace(/[^a-zA-Z0-9 ._-]/g, "_");
+      const path = [ownerId, id, ...currentPath, safeName, ".keep"].join("/");
+      const { error } = await supabase.storage.from("client-documents").upload(path, new Blob([""]), { upsert: false });
+      if (error) throw error;
+      toast({ title: "Folder created", description: safeName });
+      setNewFolderOpen(false);
+      setNewFolderName("");
+      loadDocuments();
+    } catch (err: any) {
+      toast({ title: "Failed to create folder", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
+  const deleteFolderRecursive = async (path: string[]) => {
+    if (!user || !id || !ownerId) return;
+    const fullPath = [ownerId, id, ...path].join("/");
+    const { data, error } = await supabase.storage.from("client-documents").list(fullPath);
+    if (error) throw error;
+    const filePaths: string[] = [];
+    for (const entry of (data as ClientDocument[]) || []) {
+      if (isFolder(entry)) {
+        await deleteFolderRecursive([...path, entry.name]);
+      } else {
+        filePaths.push(`${fullPath}/${entry.name}`);
+      }
+    }
+    if (filePaths.length > 0) {
+      const { error: removeError } = await supabase.storage.from("client-documents").remove(filePaths);
+      if (removeError) throw removeError;
+    }
+  };
+
   const handleDocUpload = async (file: File) => {
-    if (!user || !id) return;
+    if (!user || !id || !ownerId) return;
     setUploading(true);
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${user.id}/${id}/${Date.now()}_${safeName}`;
+      const path = [ownerId, id, ...currentPath, `${Date.now()}_${safeName}`].join("/");
       const { error } = await supabase.storage.from("client-documents").upload(path, file, { upsert: false });
       if (error) throw error;
       toast({ title: "Document uploaded", description: file.name });
@@ -146,8 +221,8 @@ const ClientDetails = () => {
   };
 
   const handleDocDownload = async (doc: ClientDocument) => {
-    if (!user || !id) return;
-    const path = `${user.id}/${id}/${doc.name}`;
+    if (!user || !id || !ownerId) return;
+    const path = [ownerId, id, ...currentPath, doc.name].join("/");
     const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(path, 120);
     if (error || !data?.signedUrl) {
       toast({ title: "Download failed", description: error?.message, variant: "destructive" });
@@ -162,14 +237,18 @@ const ClientDetails = () => {
   };
 
   const handleDocDelete = async (doc: ClientDocument) => {
-    if (!user || !id) return;
+    if (!user || !id || !ownerId) return;
     setDeletingDoc(doc.name);
     try {
-      const path = `${user.id}/${id}/${doc.name}`;
-      const { error } = await supabase.storage.from("client-documents").remove([path]);
-      if (error) throw error;
-      toast({ title: "Document deleted" });
-      setDocuments(prev => prev.filter(d => d.name !== doc.name));
+      if (isFolder(doc)) {
+        await deleteFolderRecursive([...currentPath, doc.name]);
+      } else {
+        const path = [ownerId, id, ...currentPath, doc.name].join("/");
+        const { error } = await supabase.storage.from("client-documents").remove([path]);
+        if (error) throw error;
+      }
+      toast({ title: isFolder(doc) ? "Folder deleted" : "Document deleted" });
+      setDocuments((prev) => prev.filter((d) => d.name !== doc.name));
     } catch (err: any) {
       toast({ title: "Delete failed", description: err?.message, variant: "destructive" });
     } finally {
@@ -279,6 +358,10 @@ const ClientDetails = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => setEditClientOpen(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Client
+            </Button>
             <Button variant="outline" onClick={() => navigate(`/payroll/${client.id}`)}>
               <DollarSign className="h-4 w-4 mr-2" />
               Payroll
@@ -344,6 +427,15 @@ const ClientDetails = () => {
                     <p className="text-sm font-medium">Address</p>
                     <p className="text-sm text-muted-foreground">{client.address}</p>
                   </div>
+                </div>
+              )}
+              {!client.contact_name && !client.email && !client.phone && !client.business_name && !client.address && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <p className="text-sm mb-3">No contact details added yet</p>
+                  <Button variant="outline" size="sm" onClick={() => setEditClientOpen(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Add Details
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -495,10 +587,23 @@ const ClientDetails = () => {
                   Client Documents
                 </CardTitle>
                 <CardDescription>
-                  {documents.length === 0 ? "No documents uploaded yet" : `${documents.length} document${documents.length !== 1 ? "s" : ""}`}
+                  {documents.length === 0
+                    ? "No documents uploaded yet"
+                    : (() => {
+                        const folderCount = documents.filter(isFolder).length;
+                        const fileCount = documents.length - folderCount;
+                        const parts = [];
+                        if (fileCount > 0) parts.push(`${fileCount} document${fileCount !== 1 ? "s" : ""}`);
+                        if (folderCount > 0) parts.push(`${folderCount} folder${folderCount !== 1 ? "s" : ""}`);
+                        return parts.join(", ");
+                      })()}
                 </CardDescription>
               </div>
-              <div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setNewFolderOpen(true)}>
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  New Folder
+                </Button>
                 <input
                   ref={docInputRef}
                   type="file"
@@ -525,6 +630,27 @@ const ClientDetails = () => {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-1 text-sm mb-3 flex-wrap">
+              <button
+                className={`hover:underline ${currentPath.length === 0 ? "text-foreground font-medium pointer-events-none" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setCurrentPath([])}
+              >
+                All Documents
+              </button>
+              {currentPath.map((seg, idx) => (
+                <span key={idx} className="flex items-center gap-1">
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  <button
+                    className={`hover:underline ${idx === currentPath.length - 1 ? "text-foreground font-medium pointer-events-none" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => goToBreadcrumb(idx + 1)}
+                  >
+                    {seg}
+                  </button>
+                </span>
+              ))}
+            </div>
+
             {docsLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -535,7 +661,9 @@ const ClientDetails = () => {
                 onClick={() => docInputRef.current?.click()}
               >
                 <FolderOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
-                <p className="font-medium text-sm mb-1">No documents yet</p>
+                <p className="font-medium text-sm mb-1">
+                  {currentPath.length === 0 ? "No documents yet" : "This folder is empty"}
+                </p>
                 <p className="text-xs text-muted-foreground mb-3">Upload tax returns, bank statements, contracts, reports and more</p>
                 <Button variant="outline" size="sm" disabled={uploading}>
                   <Upload className="h-4 w-4 mr-2" />Browse files
@@ -544,6 +672,33 @@ const ClientDetails = () => {
             ) : (
               <div className="space-y-2">
                 {documents.map((doc) => (
+                  isFolder(doc) ? (
+                    <div
+                      key={doc.name}
+                      className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer"
+                      onClick={() => openFolder(doc.name)}
+                    >
+                      <Folder className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{doc.name}</p>
+                        <span className="text-xs text-muted-foreground">Folder</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); handleDocDelete(doc); }}
+                        disabled={deletingDoc === doc.name}
+                        title="Delete folder"
+                      >
+                        {deletingDoc === doc.name ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
                   <div
                     key={doc.name}
                     className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors group"
@@ -588,6 +743,7 @@ const ClientDetails = () => {
                       </Button>
                     </div>
                   </div>
+                  )
                 ))}
 
                 {/* Upload another */}
@@ -611,6 +767,43 @@ const ClientDetails = () => {
         clientName={client?.client_name || ""}
         clientEmail={client?.email || ""}
       />
+
+      <EditClientDialog
+        open={editClientOpen}
+        onOpenChange={setEditClientOpen}
+        client={client}
+        onClientUpdated={loadClientData}
+      />
+
+      <Dialog open={newFolderOpen} onOpenChange={(open) => { setNewFolderOpen(open); if (!open) setNewFolderName(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Folder</DialogTitle>
+            <DialogDescription>
+              Create a folder to organize documents, e.g. by year.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="e.g. 2026"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); }}
+            autoFocus
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setNewFolderOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateFolder} disabled={creatingFolder || !newFolderName.trim()}>
+              {creatingFolder ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating…</>
+              ) : (
+                "Create"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
