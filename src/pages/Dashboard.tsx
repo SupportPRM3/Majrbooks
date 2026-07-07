@@ -33,7 +33,7 @@ interface CombinedClient {
 }
 
 const Dashboard = () => {
-  const { user, loading: authLoading, isTrial, trialDaysRemaining, subscribed, checkSubscription } = useAuth();
+  const { user, loading: authLoading, isTrial, trialDaysRemaining, subscribed, checkSubscription, isAdmin, isStaff } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -53,7 +53,9 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [clients, setClients] = useState<CombinedClient[]>([]);
   const [showUpgradeSection, setShowUpgradeSection] = useState(false);
-  const [stats, setStats] = useState({ totalClients: 0, activeReturns: 0, pendingReviews: 0, monthlyRevenue: 0, pendingDocs: 0 });
+  const [stats, setStats] = useState({ totalClients: 0, activeReturns: 0, pendingReviews: 0, monthlyRevenue: 0, pendingDocs: 0, activeSubscriptions: 0 });
+  const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
+  const [pipelineData, setPipelineData] = useState<{ stage: string; count: number }[]>([]);
 
   // Show upgrade section for trial users or when they click upgrade
   const shouldShowUpgrade = isTrial || showUpgradeSection;
@@ -61,48 +63,86 @@ const Dashboard = () => {
   const loadStats = async () => {
     if (!user) return;
     try {
-      const [clientsRes, returnsRes, invoicesRes] = await Promise.all([
-        supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "active"),
-        supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", user.id).neq("status", "filed"),
-        supabase.from("invoices").select("amount").eq("user_id", user.id).eq("status", "paid"),
+      const [clientsRes, returnsRes, pendingReviewsRes, invoicesRes, subsRes, documentsRes, invitedRes, inactiveRes, archivedRes] = await Promise.all([
+        isStaff
+          ? supabase.from("clients").select("id", { count: "exact" }).eq("status", "active")
+          : supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "active"),
+        isStaff
+          ? supabase.from("tax_returns").select("id", { count: "exact" }).neq("status", "filed")
+          : supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", user.id).neq("status", "filed"),
+        isStaff
+          ? supabase.from("tax_returns").select("id", { count: "exact" }).eq("review_status", "pending_review")
+          : supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", user.id).eq("review_status", "pending_review"),
+        isStaff
+          ? supabase.from("invoices").select("amount, created_at").eq("status", "paid")
+          : supabase.from("invoices").select("amount, created_at").eq("user_id", user.id).eq("status", "paid"),
+        isStaff
+          ? supabase.from("recurring_invoices").select("id", { count: "exact" }).eq("status", "active")
+          : supabase.from("recurring_invoices").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "active"),
+        isStaff
+          ? supabase.from("documents").select("id", { count: "exact" }).eq("status", "pending")
+          : supabase.from("documents").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "pending"),
+        isStaff
+          ? supabase.from("client_invitations").select("id", { count: "exact" }).in("status", ["pending", "sent"])
+          : supabase.from("client_invitations").select("id", { count: "exact" }).eq("user_id", user.id).in("status", ["pending", "sent"]),
+        isStaff
+          ? supabase.from("clients").select("id", { count: "exact" }).eq("status", "inactive")
+          : supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "inactive"),
+        isStaff
+          ? supabase.from("clients").select("id", { count: "exact" }).eq("status", "archived")
+          : supabase.from("clients").select("id", { count: "exact" }).eq("user_id", user.id).eq("status", "archived"),
       ]);
-      const revenue = (invoicesRes.data || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+
+      // Build trailing 12-month revenue buckets from real paid invoices
+      const now = new Date();
+      const months: { key: string; label: string }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString("en-US", { month: "short" }) });
+      }
+      const buckets: Record<string, number> = Object.fromEntries(months.map((m) => [m.key, 0]));
+      const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+      let currentMonthRevenue = 0;
+      (invoicesRes.data || []).forEach((inv) => {
+        const d = new Date(inv.created_at);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (key in buckets) buckets[key] += inv.amount || 0;
+        if (key === currentMonthKey) currentMonthRevenue += inv.amount || 0;
+      });
+      setRevenueData(months.map((m) => ({ month: m.label, revenue: buckets[m.key] })));
+
+      setPipelineData([
+        { stage: "Invited", count: invitedRes.count || 0 },
+        { stage: "Active", count: clientsRes.count || 0 },
+        { stage: "Inactive", count: inactiveRes.count || 0 },
+        { stage: "Archived", count: archivedRes.count || 0 },
+      ]);
+
       setStats({
         totalClients: clientsRes.count || 0,
         activeReturns: returnsRes.count || 0,
-        pendingReviews: Math.floor((returnsRes.count || 0) * 0.3),
-        monthlyRevenue: revenue,
-        pendingDocs: Math.floor((clientsRes.count || 0) * 0.5),
+        pendingReviews: pendingReviewsRes.count || 0,
+        monthlyRevenue: currentMonthRevenue,
+        pendingDocs: documentsRes.count || 0,
+        activeSubscriptions: subsRes.count || 0,
       });
     } catch {}
   };
-
-  const revenueData = [
-    { month: "Jan", revenue: 15000 }, { month: "Feb", revenue: 18000 },
-    { month: "Mar", revenue: 22000 }, { month: "Apr", revenue: 20000 },
-    { month: "May", revenue: 25000 }, { month: "Jun", revenue: 28000 },
-    { month: "Jul", revenue: 30000 }, { month: "Aug", revenue: 32000 },
-    { month: "Sep", revenue: 35000 }, { month: "Oct", revenue: 38000 },
-    { month: "Nov", revenue: 42000 }, { month: "Dec", revenue: stats.monthlyRevenue || 45800 },
-  ];
-
-  const pipelineData = [
-    { stage: "Lead", count: 12 }, { stage: "Onboarding", count: 8 },
-    { stage: "Active", count: stats.totalClients || 36 }, { stage: "Review", count: 5 },
-    { stage: "Filed", count: 15 },
-  ];
 
   const loadClients = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      // Load actual clients
+      // Load actual clients — staff sees all, admin sees own
       let clientQuery = supabase
         .from("clients")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+
+      if (!isStaff) {
+        clientQuery = clientQuery.eq("user_id", user.id);
+      }
 
       if (searchQuery.trim()) {
         clientQuery = clientQuery.or(`client_name.ilike.%${searchQuery}%,contact_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
@@ -116,9 +156,12 @@ const Dashboard = () => {
       let invitationQuery = supabase
         .from("client_invitations")
         .select("*")
-        .eq("user_id", user.id)
         .in("status", ["pending", "sent"])
         .order("sent_at", { ascending: false });
+
+      if (!isStaff) {
+        invitationQuery = invitationQuery.eq("user_id", user.id);
+      }
 
       if (searchQuery.trim()) {
         invitationQuery = invitationQuery.or(`client_name.ilike.%${searchQuery}%,client_email.ilike.%${searchQuery}%`);
@@ -246,7 +289,7 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Clients</p>
                   <p className="text-2xl font-bold mt-1">{stats.totalClients}</p>
-                  <p className="text-xs text-green-500 mt-1">↑ 12% this month</p>
+                  <p className="text-xs text-muted-foreground mt-1">Active clients</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                   <Users className="h-5 w-5 text-green-600" />
@@ -259,8 +302,8 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Subscriptions</p>
-                  <p className="text-2xl font-bold mt-1">{stats.totalClients + 48}</p>
-                  <p className="text-xs text-green-500 mt-1">↑ 8% this month</p>
+                  <p className="text-2xl font-bold mt-1">{stats.activeSubscriptions}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Recurring invoices</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5 text-blue-600" />
@@ -273,8 +316,8 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-                  <p className="text-2xl font-bold mt-1">${(stats.monthlyRevenue || 45800).toLocaleString()}</p>
-                  <p className="text-xs text-green-500 mt-1">↑ 18% this month</p>
+                  <p className="text-2xl font-bold mt-1">${stats.monthlyRevenue.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">This calendar month</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5 text-yellow-600" />
@@ -287,8 +330,8 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pending Documents</p>
-                  <p className="text-2xl font-bold mt-1">{stats.pendingDocs + 13}</p>
-                  <p className="text-xs text-green-500 mt-1">↑ 4 new today</p>
+                  <p className="text-2xl font-bold mt-1">{stats.pendingDocs}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Awaiting review</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                   <FileText className="h-5 w-5 text-orange-600" />
@@ -304,7 +347,6 @@ const Dashboard = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Revenue Overview</CardTitle>
-                <span className="text-xs text-green-500 font-medium">+18% YoY</span>
               </div>
               <p className="text-xs text-muted-foreground">Last 12 months</p>
             </CardHeader>
@@ -480,7 +522,14 @@ const Dashboard = () => {
                     ) : clients.length === 0 ? (
                       <tr><td colSpan={8} className="p-12 text-center text-muted-foreground">{searchQuery ? "No clients found matching your search." : "No clients added yet. Click \"Add client\" to get started."}</td></tr>
                     ) : clients.map((client) => (
-                      <tr key={client.id} className="border-b border-border hover:bg-accent/50">
+                      <tr
+                        key={client.id}
+                        className="border-b border-border hover:bg-accent/50 cursor-pointer"
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('[data-no-row-click]')) return;
+                          if (!client.isInvitation) navigate(`/client/${client.id}`);
+                        }}
+                      >
                         <td className="p-4">
                           <div className="flex items-center gap-2">
                             <div>
