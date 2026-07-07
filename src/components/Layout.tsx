@@ -224,7 +224,7 @@ const SortableItem = ({
 };
 
 const Layout = ({ children }: LayoutProps) => {
-  const { signOut, user, subscriptionTier, subscribed, isTrial, trialDaysRemaining, isAdmin, isClient, loading } = useAuth();
+  const { signOut, user, subscriptionTier, subscribed, isTrial, trialDaysRemaining, isAdmin, isClient, isStaff, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -328,42 +328,6 @@ const Layout = ({ children }: LayoutProps) => {
       ],
     },
     { id: "projects", path: "/projects", label: "Projects", icon: Building2, hasChevron: false, module: "dashboard" },
-    {
-      id: "financial-planning", path: "/financial-planning", label: "Financial planning", icon: Lightbulb, hasChevron: true, module: "reports",
-      subItems: [
-        { path: "/financial-planning", label: "Planning Overview" },
-        { path: "/financial-dashboard", label: "Financial Dashboard" },
-        { path: "/cash-flow", label: "Cash Flow" },
-      ],
-    },
-    {
-      id: "workflow-automation", path: "/workflow-automation", label: "Workflow automation", icon: RefreshCw, hasChevron: true, module: "workflow-automation",
-      subItems: [
-        { path: "/workflow-automation", label: "All Workflows" },
-      ],
-    },
-    {
-      id: "taxes", path: "/tax-returns", label: "Taxes", icon: FileSpreadsheet, hasChevron: true, module: "tax-returns",
-      subItems: [
-        { path: "/tax-returns", label: "Tax Returns" },
-        { path: "/1099-history", label: "1099 History" },
-      ],
-    },
-    {
-      id: "lending-banking", path: "/bank-transactions", label: "Lending & banking", icon: Wallet, hasChevron: true, module: "transactions",
-      subItems: [
-        { path: "/bank-transactions", label: "Bank Transactions" },
-        { path: "/bank-reconciliation", label: "Reconciliation" },
-      ],
-    },
-    {
-      id: "commerce", path: "/invoices", label: "Commerce", icon: TrendingUp, hasChevron: true, module: "invoices",
-      subItems: [
-        { path: "/invoices", label: "Invoices" },
-        { path: "/invoice-templates", label: "Templates" },
-        { path: "/sales-tax-summary", label: "Sales Tax" },
-      ],
-    },
   ];
 
   const [yourBooksItems, setYourBooksItems] = useState<YourBooksItem[]>(defaultYourBooksItems);
@@ -382,14 +346,14 @@ const Layout = ({ children }: LayoutProps) => {
   useEffect(() => {
     if (loading) return;
     if (!user) return;
-    if (subscribed || isTrial || subscriptionTier !== null || isAdmin) return;
+    if (subscribed || isTrial || subscriptionTier !== null || isAdmin || isStaff) return;
     const timer = setTimeout(() => {
-      if (!subscribed && !isTrial && subscriptionTier === null && !isAdmin) {
+      if (!subscribed && !isTrial && subscriptionTier === null && !isAdmin && !isStaff) {
         navigate("/auth");
       }
     }, 3000);
     return () => clearTimeout(timer);
-  }, [user, subscribed, subscriptionTier, isTrial, isAdmin, loading, navigate]);
+  }, [user, subscribed, subscriptionTier, isTrial, isAdmin, isStaff, loading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -521,7 +485,6 @@ const Layout = ({ children }: LayoutProps) => {
       title: "Clients",
       items: [
         { id: "clients", path: "/dashboard", label: "Clients", icon: Users },
-        { id: "overview", path: "/dashboard", label: "Overview", icon: LayoutDashboard },
         { id: "client-invitations", path: "/client-invitations", label: "Client Invitations", icon: UserPlus },
         { id: "multi-entity", path: "/multi-entity", label: "Multi-entity", icon: Layers },
       ],
@@ -637,13 +600,20 @@ const Layout = ({ children }: LayoutProps) => {
     },
   ];
 
+  const staffBlockedPaths = [
+    "/team", "/user-permissions", "/bulk-client-upload", "/bulk-client-numbers",
+    "/billing/client-subscriptions", "/billing/product-recommendations",
+    "/billing/discover-more", "/billing/firm-subscriptions",
+    "/billing/billing-details", "/billing/revenue-share",
+  ];
+
   const practiceNavSections = navSections
     .map(section => ({
       ...section,
       items: section.items.filter(item => {
-
         if (item.isExternal) return true;
-        return isAdmin || canAccessPath(item.path);
+        if (isStaff && staffBlockedPaths.includes(item.path)) return false;
+        return isAdmin || isStaff || canAccessPath(item.path);
       }),
     }))
     .filter(section => section.items.length > 0);
@@ -1087,13 +1057,13 @@ const Layout = ({ children }: LayoutProps) => {
                     )}
                     <div className="hidden md:flex flex-col items-start">
                       <span className="text-sm font-medium">
-                        {isAdmin ? "Majr Books" : (profile?.full_name || user?.email?.split("@")[0] || "User")}
+                        {isAdmin ? "Majr Books" : (profile?.full_name || user?.email?.split("@")[0] || (isStaff ? "Staff" : "User"))}
                       </span>
                       <span className={cn(
                         "text-xs font-medium px-1.5 py-0.5 rounded",
                         isAdmin ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"
                       )}>
-                        {isAdmin ? "ADMIN" : "User"}
+                        {isAdmin ? "ADMIN" : isStaff ? "Staff" : "User"}
                       </span>
                     </div>
                   </Button>
@@ -1123,7 +1093,7 @@ const Layout = ({ children }: LayoutProps) => {
                         "text-xs font-medium px-1.5 py-0.5 rounded mt-1 w-fit",
                         isAdmin ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
                       )}>
-                        {isAdmin ? "Admin" : "User"}
+                        {isAdmin ? "Admin" : isStaff ? "Staff" : "User"}
                       </span>
                     </div>
                   </div>
