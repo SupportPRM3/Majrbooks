@@ -283,8 +283,13 @@ const ClientDetails = () => {
     const destPath = destFolderName === ".." ? currentPath.slice(0, -1) : [...currentPath, destFolderName];
     const toPath = [ownerId, id, ...destPath, doc.name].join("/");
     try {
-      const { error } = await supabase.storage.from("client-documents").move(fromPath, toPath);
-      if (error) throw error;
+      // Copy-then-delete instead of storage move(): move() performs a rename-style
+      // update that some storage RLS setups don't grant, while copy (insert) and
+      // remove (delete) match the permissions uploads/deletes already rely on.
+      const { error: copyError } = await supabase.storage.from("client-documents").copy(fromPath, toPath);
+      if (copyError) throw copyError;
+      const { error: removeError } = await supabase.storage.from("client-documents").remove([fromPath]);
+      if (removeError) throw removeError;
       toast({ title: "Document moved", description: getDocLabel(doc.name) });
       setDocuments((prev) => prev.filter((d) => d.name !== doc.name));
     } catch (err: any) {
