@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, MoreHorizontal, ChevronDown, Upload, Settings, Info, Users, FileText, TrendingUp, AlertCircle } from "lucide-react";
+import { Search, MoreHorizontal, ChevronDown, Upload, Settings, Info, Users, FileText, TrendingUp, AlertCircle, UserPlus, Clock } from "lucide-react";
 import { ChatWidget } from "@/components/ChatWidget";
 import { AddClientDialog } from "@/components/AddClientDialog";
 import { DashboardCharts } from "@/components/DashboardCharts";
@@ -34,7 +34,7 @@ interface CombinedClient {
 }
 
 const Dashboard = () => {
-  const { user, loading: authLoading, isTrial, trialDaysRemaining, subscribed, checkSubscription } = useAuth();
+  const { user, loading: authLoading, isTrial, trialDaysRemaining, subscribed, checkSubscription, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [clients, setClients] = useState<CombinedClient[]>([]);
   const [showUpgradeSection, setShowUpgradeSection] = useState(false);
-  const [stats, setStats] = useState({ totalClients: 0, activeReturns: 0, pendingReviews: 0, monthlyRevenue: 0, pendingDocs: 0, activeSubscriptions: 0 });
+  const [stats, setStats] = useState({ totalClients: 0, activeReturns: 0, pendingReviews: 0, monthlyRevenue: 0, pendingDocs: 0, activeSubscriptions: 0, accountsCreated: 0, pendingSignups: 0 });
   const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
   const [pipelineData, setPipelineData] = useState<{ stage: string; count: number }[]>([]);
 
@@ -65,7 +65,7 @@ const Dashboard = () => {
     if (!user) return;
     try {
       const ownerId = await getScopeOwnerId(user.id);
-      const [clientsRes, returnsRes, pendingReviewsRes, invoicesRes, subsRes, invitedRes, inactiveRes, archivedRes] = await Promise.all([
+      const [clientsRes, returnsRes, pendingReviewsRes, invoicesRes, subsRes, invitedRes, inactiveRes, archivedRes, acceptedInvitesRes] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "active"),
         supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", ownerId).neq("status", "filed"),
         supabase.from("tax_returns").select("id", { count: "exact" }).eq("user_id", ownerId).eq("review_status", "pending_review"),
@@ -74,6 +74,7 @@ const Dashboard = () => {
         supabase.from("client_invitations").select("id", { count: "exact" }).eq("user_id", ownerId).in("status", ["pending", "sent"]),
         supabase.from("clients").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "inactive"),
         supabase.from("clients").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "archived"),
+        supabase.from("client_invitations").select("id", { count: "exact" }).eq("user_id", ownerId).eq("status", "accepted"),
       ]);
 
       // Build trailing 12-month revenue buckets from real paid invoices
@@ -108,6 +109,8 @@ const Dashboard = () => {
         monthlyRevenue: currentMonthRevenue,
         pendingDocs: 0, // no document-tracking table exists yet
         activeSubscriptions: subsRes.count || 0,
+        accountsCreated: acceptedInvitesRes.count || 0,
+        pendingSignups: invitedRes.count || 0,
       });
     } catch {}
   };
@@ -319,6 +322,40 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Admin-only: client signup activity */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Client Accounts Created</p>
+                    <p className="text-2xl font-bold mt-1">{stats.accountsCreated}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Invitations accepted &amp; signed up</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <UserPlus className="h-5 w-5 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Signups</p>
+                    <p className="text-2xl font-bold mt-1">{stats.pendingSignups}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Invited, not yet created an account</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
