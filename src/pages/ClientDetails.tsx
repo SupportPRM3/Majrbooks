@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Mail, Phone, Building, MapPin, User, FileText, Calendar, Download, FileSpreadsheet, DollarSign, Plus, Upload, Trash2, File, FileImage, Loader2, FolderOpen, Folder, FolderPlus, ChevronRight, Pencil } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building, MapPin, User, FileText, Calendar, Download, FileSpreadsheet, DollarSign, Plus, Upload, Trash2, File, FileImage, Loader2, FolderOpen, Folder, FolderPlus, ChevronRight, Pencil, Eye, ExternalLink, FolderInput, ArrowUp } from "lucide-react";
 import { format } from "date-fns";
 import { CreateInvoiceDialog } from "@/components/CreateInvoiceDialog";
 import { EditInvoiceDialog } from "@/components/EditInvoiceDialog";
@@ -79,6 +79,9 @@ const ClientDetails = () => {
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<ClientDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -234,6 +237,59 @@ const ClientDetails = () => {
     a.download = doc.name.replace(/^\d+_/, "");
     a.target = "_blank";
     a.click();
+  };
+
+  const getPreviewKind = (name: string): "image" | "pdf" | null => {
+    const ext = name.split(".").pop()?.toLowerCase();
+    if (ext === "pdf") return "pdf";
+    if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext || "")) return "image";
+    return null;
+  };
+
+  const handleDocView = async (doc: ClientDocument) => {
+    if (!user || !id || !ownerId) return;
+    const path = [ownerId, id, ...currentPath, doc.name].join("/");
+    const kind = getPreviewKind(doc.name);
+
+    if (!kind) {
+      // No inline preview available for this file type — just open it in a new tab.
+      const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(path, 120);
+      if (error || !data?.signedUrl) {
+        toast({ title: "Preview failed", description: error?.message, variant: "destructive" });
+        return;
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setPreviewDoc(doc);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    try {
+      const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(path, 300);
+      if (error || !data?.signedUrl) throw error || new Error("No signed URL returned");
+      setPreviewUrl(data.signedUrl);
+    } catch (err: any) {
+      toast({ title: "Preview failed", description: err?.message, variant: "destructive" });
+      setPreviewDoc(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleMoveDoc = async (doc: ClientDocument, destFolderName: string) => {
+    if (!user || !id || !ownerId) return;
+    const fromPath = [ownerId, id, ...currentPath, doc.name].join("/");
+    const destPath = destFolderName === ".." ? currentPath.slice(0, -1) : [...currentPath, destFolderName];
+    const toPath = [ownerId, id, ...destPath, doc.name].join("/");
+    try {
+      const { error } = await supabase.storage.from("client-documents").move(fromPath, toPath);
+      if (error) throw error;
+      toast({ title: "Document moved", description: getDocLabel(doc.name) });
+      setDocuments((prev) => prev.filter((d) => d.name !== doc.name));
+    } catch (err: any) {
+      toast({ title: "Move failed", description: err?.message || "Unknown error", variant: "destructive" });
+    }
   };
 
   const handleDocDelete = async (doc: ClientDocument) => {
@@ -701,7 +757,8 @@ const ClientDetails = () => {
                   ) : (
                   <div
                     key={doc.name}
-                    className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors group"
+                    className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer"
+                    onClick={() => handleDocView(doc)}
                   >
                     {getDocIcon(doc.name)}
                     <div className="flex-1 min-w-0">
@@ -722,16 +779,54 @@ const ClientDetails = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDocDownload(doc)}
-                        title="Download"
+                        onClick={(e) => { e.stopPropagation(); handleDocView(doc); }}
+                        title="View"
                       >
-                        <Download className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleDocDownload(doc); }}
+                        title="Download"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Move to folder"
+                          >
+                            <FolderInput className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          {currentPath.length > 0 && (
+                            <DropdownMenuItem onClick={() => handleMoveDoc(doc, "..")}>
+                              <ArrowUp className="h-4 w-4 mr-2" />
+                              Move to parent folder
+                            </DropdownMenuItem>
+                          )}
+                          {documents.filter(isFolder).length === 0 ? (
+                            <DropdownMenuItem disabled>No folders here yet</DropdownMenuItem>
+                          ) : (
+                            documents.filter(isFolder).map((folder) => (
+                              <DropdownMenuItem key={folder.name} onClick={() => handleMoveDoc(doc, folder.name)}>
+                                <Folder className="h-4 w-4 mr-2 text-amber-500" />
+                                {folder.name}
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => handleDocDelete(doc)}
+                        onClick={(e) => { e.stopPropagation(); handleDocDelete(doc); }}
                         disabled={deletingDoc === doc.name}
                         title="Delete"
                       >
@@ -801,6 +896,33 @@ const ClientDetails = () => {
                 "Create"
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) { setPreviewDoc(null); setPreviewUrl(null); } }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-4 pr-6">
+              <DialogTitle className="truncate">{previewDoc ? getDocLabel(previewDoc.name) : ""}</DialogTitle>
+              {previewUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open in new tab
+                  </a>
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-[60vh] overflow-auto flex items-center justify-center bg-muted/30 rounded-md">
+            {previewLoading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : previewUrl && previewDoc && getPreviewKind(previewDoc.name) === "image" ? (
+              <img src={previewUrl} alt={getDocLabel(previewDoc.name)} className="max-w-full max-h-[75vh] object-contain" />
+            ) : previewUrl && previewDoc && getPreviewKind(previewDoc.name) === "pdf" ? (
+              <iframe src={previewUrl} title={getDocLabel(previewDoc.name)} className="w-full h-[75vh] rounded-md border-0" />
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
