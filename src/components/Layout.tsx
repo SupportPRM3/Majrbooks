@@ -1114,8 +1114,8 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </header>
 
-        {/* Trial Banner */}
-        {!isAdmin && isTrial && trialDaysRemaining !== null && (
+        {/* Trial Banner — staff/clients don't own billing, so they never see trial/upgrade UI */}
+        {!isAdmin && !isStaff && !isClient && isTrial && trialDaysRemaining !== null && (
           <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/20 px-6 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1142,7 +1142,7 @@ const Layout = ({ children }: LayoutProps) => {
         <main className="flex-1 p-6 bg-background">{children}</main>
       </div>
 
-      {isTrial && !isAdmin && !isClient && trialDaysRemaining !== null && trialDaysRemaining <= 3 && (
+      {isTrial && !isAdmin && !isClient && !isStaff && trialDaysRemaining !== null && trialDaysRemaining <= 3 && (
         <TrialExpiryModal
           daysRemaining={trialDaysRemaining}
           isTrialExpired={trialDaysRemaining <= 0}
